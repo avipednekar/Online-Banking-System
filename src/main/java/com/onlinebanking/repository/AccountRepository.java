@@ -1,0 +1,21 @@
+package com.onlinebanking.repository;
+
+import com.onlinebanking.model.Account;
+import com.onlinebanking.model.AccountType;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface AccountRepository extends JpaRepository<Account, Long> {
+
+    boolean existsByAccountNumber(String accountNumber);
+
+    Optional<Account> findByAccountNumber(String accountNumber);
+
+    List<Account> findByOwnerIdOrderByCreatedAtAsc(Long ownerId);
+
+    List<Account> findByOwnerUsernameIgnoreCaseOrderByCreatedAtAsc(String username);
+
+    long countByAccountType(AccountType accountType);
+}

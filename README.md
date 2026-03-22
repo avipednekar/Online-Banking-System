@@ -44,6 +44,8 @@ Create a frontend env file from [frontend/.env.example](D:\Online Banking System
 Copy-Item frontend\.env.example frontend\.env
 ```
 
+The frontend now defaults to same-origin `/api` requests. In local development, Vite proxies `/api` to the backend target from `API_PROXY_TARGET`, so the browser does not need a hardcoded `http://localhost:8080` API host.
+
 Run the frontend:
 
 ```bash
@@ -57,6 +59,16 @@ Frontend base URL:
 ```text
 http://localhost:5173
 ```
+
+## Frontend architecture
+
+- `frontend/src/api/api.js`: centralized API client and error parsing
+- `frontend/src/context/AuthContext.jsx`: session and authentication state
+- `frontend/src/components/auth`: onboarding and login UI
+- `frontend/src/components/customer`: customer banking dashboard
+- `frontend/src/components/admin`: admin KYC and customer management dashboard
+- `frontend/src/hooks/useNotifications.js`: notification state
+- `frontend/src/utils`: shared formatters
 
 ## Main API endpoints
 
@@ -159,12 +171,21 @@ npm run build
 
 - Passwords are hashed with BCrypt
 - JWT protects all non-auth endpoints
+- Frontend auth state is centralized in an auth context instead of scattered component state
+- Frontend API calls are centralized in `api.js`
+- Frontend defaults to same-origin `/api` instead of exposing a fixed backend host in bundled client code
+- Frontend session data now uses `sessionStorage` instead of `localStorage`
 - Account operations use the authenticated user instead of trusting a URL user ID
 - Transfers to other users require an approved beneficiary
 - Audit logs are written for registration, account creation, balance actions, and beneficiary creation
 - Ledger entries are written for posted balance movements
 - Global validation and exception handling return API-safe error responses
 - CORS is limited to the React dev origin by default
+- Admin-only endpoints are protected with role checks
+
+## Security note
+
+If a browser calls an API directly, some network path will always be visible in developer tools. To fully hide internal service topology, deploy the frontend behind a reverse proxy or backend-for-frontend and use same-origin routes such as `/api`. For stronger token security in production, move away from JavaScript-accessible storage to `HttpOnly`, `Secure`, `SameSite` cookies with backend session handling or refresh-token rotation.
 
 ## Domain improvements
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const NOTIFICATION_TIMEOUT_MS = 5000;
 
 const initialRegisterForm = {
   username: "",
@@ -41,6 +42,41 @@ const initialBeneficiaryForm = {
   accountNumber: ""
 };
 
+const initialFormErrors = {
+  register: {},
+  login: {},
+  account: {},
+  balance: {},
+  transfer: {},
+  beneficiary: {}
+};
+
+const actionDescriptions = {
+  profile: "Loading secure profile",
+  accounts: "Refreshing accounts",
+  beneficiaries: "Refreshing beneficiaries",
+  transactions: "Loading transaction history",
+  register: "Submitting onboarding",
+  login: "Signing in",
+  account: "Opening account",
+  balance: "Posting balance update",
+  transfer: "Processing transfer",
+  beneficiary: "Saving beneficiary"
+};
+
+function formatAddress(profile) {
+  return [
+    profile?.addressLine1,
+    profile?.addressLine2,
+    profile?.city,
+    profile?.state,
+    profile?.postalCode,
+    profile?.country
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem("bank_token") || "");
   const [user, setUser] = useState(() => {
@@ -57,9 +93,12 @@ function App() {
   const [transferForm, setTransferForm] = useState(initialTransferForm);
   const [beneficiaryForm, setBeneficiaryForm] = useState(initialBeneficiaryForm);
   const [amount, setAmount] = useState("100.00");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [loadingState, setLoadingState] = useState({ count: 0, action: "" });
+  const [notifications, setNotifications] = useState([]);
+  const [formErrors, setFormErrors] = useState(initialFormErrors);
+
+  const loading = loadingState.count > 0;
+  const activeAction = loadingState.action;
 
   useEffect(() => {
     if (token) {
@@ -83,6 +122,104 @@ function App() {
     [accounts]
   );
 
+  function startLoading(action) {
+    setLoadingState((current) => ({
+      count: current.count + 1,
+      action
+    }));
+  }
+
+  function stopLoading() {
+    setLoadingState((current) => ({
+      count: Math.max(0, current.count - 1),
+      action: current.count <= 1 ? "" : current.action
+    }));
+  }
+
+  function showNotification(type, title, message, details = []) {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setNotifications((current) => [...current, { id, type, title, message, details }]);
+    window.setTimeout(() => {
+      setNotifications((current) => current.filter((notification) => notification.id !== id));
+    }, NOTIFICATION_TIMEOUT_MS);
+  }
+
+  function dismissNotification(id) {
+    setNotifications((current) => current.filter((notification) => notification.id !== id));
+  }
+
+  function clearFormErrors(formKey) {
+    setFormErrors((current) => ({
+      ...current,
+      [formKey]: {}
+    }));
+  }
+
+  function updateField(setter, formKey, field, value) {
+    setter((current) => ({ ...current, [field]: value }));
+    setFormErrors((current) => ({
+      ...current,
+      [formKey]: {
+        ...current[formKey],
+        [field]: ""
+      }
+    }));
+  }
+
+  function setRequestErrors(formKey, requestError) {
+    setFormErrors((current) => ({
+      ...current,
+      [formKey]: requestError?.fields || {}
+    }));
+  }
+
+  function renderFieldError(formKey, field) {
+    const message = formErrors[formKey]?.[field];
+    return message ? <span className="field-error">{message}</span> : null;
+  }
+
+  function renderFormAlert(formKey) {
+    const hasErrors = Object.values(formErrors[formKey] || {}).some(Boolean);
+    return hasErrors ? (
+      <div className="inline-alert" role="alert">
+        Please correct the highlighted fields before continuing.
+      </div>
+    ) : null;
+  }
+
+  function renderButtonLabel(idleLabel, loadingLabel, action) {
+    if (activeAction !== action) {
+      return idleLabel;
+    }
+
+    return (
+      <span className="button-content">
+        <span className="button-spinner" aria-hidden="true" />
+        {loadingLabel}
+      </span>
+    );
+  }
+
+  function handleRequestError(title, requestError, formKey = null) {
+    if (formKey) {
+      setRequestErrors(formKey, requestError);
+    }
+
+    const details = Object.values(requestError?.fields || {});
+    if (requestError?.status === 401 && token) {
+      logout(true);
+      showNotification("error", "Session expired", requestError.message || "Please sign in again.");
+      return;
+    }
+
+    showNotification(
+      "error",
+      title,
+      requestError?.message || "Request failed",
+      details
+    );
+  }
+
   async function apiRequest(path, options = {}) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
@@ -97,65 +234,83 @@ function App() {
       return null;
     }
 
-    const data = await response.json().catch(() => ({}));
+    const raw = await response.text();
+    let data = {};
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = {
+          error: raw,
+          message: raw
+        };
+      }
+    }
+
     if (!response.ok) {
-      throw new Error(data.error || data.message || "Request failed");
+      const requestError = new Error(
+        data.error || data.message || response.statusText || "Request failed"
+      );
+      requestError.status = response.status;
+      requestError.fields = data.fields || {};
+      throw requestError;
     }
     return data;
   }
 
   async function fetchProfile() {
     try {
-      setLoading(true);
+      startLoading("profile");
       const profile = await apiRequest("/api/auth/me");
       setUser(profile);
       localStorage.setItem("bank_user", JSON.stringify(profile));
-      setMessage(`Welcome back, ${profile.username}`);
-      setError("");
     } catch (requestError) {
-      logout();
-      setError(requestError.message);
+      logout(true);
+      showNotification("error", "Session expired", requestError.message);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function fetchAccounts() {
     try {
-      setLoading(true);
+      startLoading("accounts");
       const data = await apiRequest("/api/accounts");
       setAccounts(data);
       if (data.length > 0 && !selectedAccount) {
         setSelectedAccount(data[0].accountNumber);
+      } else if (data.length === 0) {
+        setSelectedAccount("");
       }
-      setError("");
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Unable to load accounts", requestError);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function fetchBeneficiaries() {
     try {
+      startLoading("beneficiaries");
       const data = await apiRequest("/api/beneficiaries");
       setBeneficiaries(data);
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Unable to load beneficiaries", requestError);
+    } finally {
+      stopLoading();
     }
   }
 
   async function fetchTransactions(accountNumber) {
     try {
-      setLoading(true);
+      startLoading("transactions");
       const data = await apiRequest(`/api/accounts/${accountNumber}/transactions`);
       setTransactions(data);
       setSelectedAccount(accountNumber);
-      setError("");
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Unable to load transaction history", requestError);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
@@ -171,47 +326,60 @@ function App() {
 
   async function authenticate(path, payload) {
     try {
-      setLoading(true);
+      const action = path === "/api/auth/register" ? "register" : "login";
+      clearFormErrors(action);
+      startLoading(action);
       const data = await apiRequest(path, {
         method: "POST",
         body: JSON.stringify(payload)
       });
+      const isRegister = path === "/api/auth/register";
       setToken(data.token);
       localStorage.setItem("bank_token", data.token);
       const profile = {
         userId: data.userId,
         username: data.username,
         role: data.role,
-        fullName: registerForm.fullName || null,
-        phoneNumber: registerForm.phoneNumber || null,
-        gender: registerForm.gender || null,
-        occupation: registerForm.occupation || null,
-        addressLine1: registerForm.addressLine1 || null,
-        addressLine2: registerForm.addressLine2 || null,
-        city: registerForm.city || null,
-        state: registerForm.state || null,
-        postalCode: registerForm.postalCode || null,
-        country: registerForm.country || null,
-        dateOfBirth: registerForm.dateOfBirth || null,
-        kycStatus: null
+        email: isRegister ? payload.email : null,
+        fullName: isRegister ? payload.fullName : null,
+        phoneNumber: isRegister ? payload.phoneNumber : null,
+        gender: isRegister ? payload.gender : null,
+        occupation: isRegister ? payload.occupation : null,
+        addressLine1: isRegister ? payload.addressLine1 : null,
+        addressLine2: isRegister ? payload.addressLine2 : null,
+        city: isRegister ? payload.city : null,
+        state: isRegister ? payload.state : null,
+        postalCode: isRegister ? payload.postalCode : null,
+        country: isRegister ? payload.country : null,
+        dateOfBirth: isRegister ? payload.dateOfBirth : null,
+        kycStatus: isRegister ? "PENDING" : null
       };
       setUser(profile);
       localStorage.setItem("bank_user", JSON.stringify(profile));
       setRegisterForm(initialRegisterForm);
       setLoginForm(initialLoginForm);
-      setMessage(data.message);
-      setError("");
+      showNotification(
+        "success",
+        isRegister ? "Customer onboarded" : "Signed in",
+        data.message,
+        isRegister ? ["KYC status is pending review."] : []
+      );
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError(
+        path === "/api/auth/register" ? "Registration failed" : "Login failed",
+        requestError,
+        path === "/api/auth/register" ? "register" : "login"
+      );
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function handleCreateAccount(event) {
     event.preventDefault();
     try {
-      setLoading(true);
+      clearFormErrors("account");
+      startLoading("account");
       const created = await apiRequest("/api/accounts", {
         method: "POST",
         body: JSON.stringify({
@@ -221,23 +389,28 @@ function App() {
       });
       setAccounts((previous) => [...previous, created]);
       setAccountForm(initialAccountForm);
-      setMessage(`Account ${created.accountNumber} created`);
-      setError("");
+      setSelectedAccount(created.accountNumber);
+      showNotification(
+        "success",
+        "Account created",
+        `Account ${created.accountNumber} created successfully.`
+      );
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Account creation failed", requestError, "account");
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function handleBalanceAction(type) {
     if (!selectedAccount) {
-      setError("Select an account first");
+      showNotification("error", "No account selected", "Select an account first.");
       return;
     }
 
     try {
-      setLoading(true);
+      clearFormErrors("balance");
+      startLoading("balance");
       const updated = await apiRequest(`/api/accounts/${selectedAccount}/${type}`, {
         method: "POST",
         body: JSON.stringify({ amount: Number(amount) })
@@ -247,20 +420,28 @@ function App() {
           account.accountNumber === updated.accountNumber ? updated : account
         )
       );
-      setMessage(`${type === "deposit" ? "Deposit" : "Withdrawal"} completed`);
-      setError("");
+      showNotification(
+        "success",
+        type === "deposit" ? "Deposit completed" : "Withdrawal completed",
+        `${type === "deposit" ? "Deposit" : "Withdrawal"} posted for ${updated.accountNumber}.`
+      );
       await fetchTransactions(selectedAccount);
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError(
+        type === "deposit" ? "Deposit failed" : "Withdrawal failed",
+        requestError,
+        "balance"
+      );
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function handleTransfer(event) {
     event.preventDefault();
     try {
-      setLoading(true);
+      clearFormErrors("transfer");
+      startLoading("transfer");
       await apiRequest("/api/accounts/transfer", {
         method: "POST",
         body: JSON.stringify({
@@ -269,23 +450,23 @@ function App() {
         })
       });
       setTransferForm(initialTransferForm);
-      setMessage("Transfer completed");
-      setError("");
+      showNotification("success", "Transfer completed", "Funds were transferred successfully.");
       await fetchAccounts();
       if (selectedAccount) {
         await fetchTransactions(selectedAccount);
       }
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Transfer failed", requestError, "transfer");
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
   async function handleCreateBeneficiary(event) {
     event.preventDefault();
     try {
-      setLoading(true);
+      clearFormErrors("beneficiary");
+      startLoading("beneficiary");
       const created = await apiRequest("/api/beneficiaries", {
         method: "POST",
         body: JSON.stringify(beneficiaryForm)
@@ -293,16 +474,19 @@ function App() {
       setBeneficiaries((previous) => [created, ...previous]);
       setBeneficiaryForm(initialBeneficiaryForm);
       setTransferForm((current) => ({ ...current, toAccountNumber: created.accountNumber }));
-      setMessage(`Beneficiary ${created.nickname} added`);
-      setError("");
+      showNotification(
+        "success",
+        "Beneficiary saved",
+        `Beneficiary ${created.nickname} added successfully.`
+      );
     } catch (requestError) {
-      setError(requestError.message);
+      handleRequestError("Beneficiary creation failed", requestError, "beneficiary");
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   }
 
-  function logout() {
+  function logout(silent = false) {
     localStorage.removeItem("bank_token");
     localStorage.removeItem("bank_user");
     setToken("");
@@ -311,14 +495,41 @@ function App() {
     setBeneficiaries([]);
     setTransactions([]);
     setSelectedAccount("");
-    setMessage("Logged out");
-    setError("");
+    if (!silent) {
+      showNotification("info", "Signed out", "You have been logged out.");
+    }
   }
 
   return (
     <div className="app-shell">
       <div className="ambient ambient-left" />
       <div className="ambient ambient-right" />
+      <div className="notification-stack" aria-live="polite">
+        {notifications.map((notification) => (
+          <article key={notification.id} className={`notification-card ${notification.type}`}>
+            <div className="notification-header">
+              <div>
+                <strong>{notification.title}</strong>
+                <p>{notification.message}</p>
+              </div>
+              <button
+                type="button"
+                className="notification-close"
+                onClick={() => dismissNotification(notification.id)}
+              >
+                Close
+              </button>
+            </div>
+            {notification.details?.length ? (
+              <ul className="notification-list">
+                {notification.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            ) : null}
+          </article>
+        ))}
+      </div>
       <main className="page">
         <section className="hero">
           <div>
@@ -332,37 +543,41 @@ function App() {
           </div>
           <div className="hero-card">
             <span>Status</span>
-            <strong>{loading ? "Processing..." : token ? "Authenticated" : "Awaiting sign in"}</strong>
+            <strong>{loading ? "Working..." : token ? "Authenticated" : "Awaiting sign in"}</strong>
+            <p>{loading ? actionDescriptions[activeAction] : token ? "Authenticated session ready" : "Authenticate to begin"}</p>
             <p>API: {API_BASE_URL}</p>
           </div>
         </section>
 
-        {message ? <div className="banner success">{message}</div> : null}
-        {error ? <div className="banner error">{error}</div> : null}
-
         {!token ? (
           <section className="auth-grid">
             <form className="panel" onSubmit={handleRegister}>
-              <h2>Create profile</h2>
+              <h2>Customer onboarding</h2>
+              <p className="muted">
+                Capture the core KYC profile now. New registrations start in pending review.
+              </p>
+              {renderFormAlert("register")}
               <label>
                 Full name
                 <input
                   value={registerForm.fullName}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, fullName: event.target.value }))
+                    updateField(setRegisterForm, "register", "fullName", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "fullName")}
               </label>
               <label>
                 Username
                 <input
                   value={registerForm.username}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, username: event.target.value }))
+                    updateField(setRegisterForm, "register", "username", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "username")}
               </label>
               <label>
                 Email
@@ -370,10 +585,11 @@ function App() {
                   type="email"
                   value={registerForm.email}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, email: event.target.value }))
+                    updateField(setRegisterForm, "register", "email", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "email")}
               </label>
               <label>
                 Password
@@ -381,102 +597,112 @@ function App() {
                   type="password"
                   value={registerForm.password}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, password: event.target.value }))
+                    updateField(setRegisterForm, "register", "password", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "password")}
               </label>
               <label>
                 Phone number
                 <input
                   value={registerForm.phoneNumber}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, phoneNumber: event.target.value }))
+                    updateField(setRegisterForm, "register", "phoneNumber", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "phoneNumber")}
               </label>
               <label>
                 Gender
                 <select
                   value={registerForm.gender}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, gender: event.target.value }))
+                    updateField(setRegisterForm, "register", "gender", event.target.value)
                   }
                 >
                   <option value="MALE">Male</option>
                   <option value="FEMALE">Female</option>
                   <option value="OTHER">Other</option>
                 </select>
+                {renderFieldError("register", "gender")}
               </label>
               <label>
                 Occupation
                 <input
                   value={registerForm.occupation}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, occupation: event.target.value }))
+                    updateField(setRegisterForm, "register", "occupation", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "occupation")}
               </label>
               <label>
                 Address line 1
                 <input
                   value={registerForm.addressLine1}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, addressLine1: event.target.value }))
+                    updateField(setRegisterForm, "register", "addressLine1", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "addressLine1")}
               </label>
               <label>
                 Address line 2
                 <input
                   value={registerForm.addressLine2}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, addressLine2: event.target.value }))
+                    updateField(setRegisterForm, "register", "addressLine2", event.target.value)
                   }
                 />
+                {renderFieldError("register", "addressLine2")}
               </label>
               <label>
                 City
                 <input
                   value={registerForm.city}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, city: event.target.value }))
+                    updateField(setRegisterForm, "register", "city", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "city")}
               </label>
               <label>
                 State
                 <input
                   value={registerForm.state}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, state: event.target.value }))
+                    updateField(setRegisterForm, "register", "state", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "state")}
               </label>
               <label>
                 Postal code
                 <input
                   value={registerForm.postalCode}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, postalCode: event.target.value }))
+                    updateField(setRegisterForm, "register", "postalCode", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "postalCode")}
               </label>
               <label>
                 Country
                 <input
                   value={registerForm.country}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, country: event.target.value }))
+                    updateField(setRegisterForm, "register", "country", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "country")}
               </label>
               <label>
                 Date of birth
@@ -484,25 +710,30 @@ function App() {
                   type="date"
                   value={registerForm.dateOfBirth}
                   onChange={(event) =>
-                    setRegisterForm((current) => ({ ...current, dateOfBirth: event.target.value }))
+                    updateField(setRegisterForm, "register", "dateOfBirth", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("register", "dateOfBirth")}
               </label>
-              <button type="submit" disabled={loading}>Register</button>
+              <button type="submit" disabled={loading}>
+                {renderButtonLabel("Register", "Registering...", "register")}
+              </button>
             </form>
 
             <form className="panel" onSubmit={handleLogin}>
               <h2>Sign in</h2>
+              {renderFormAlert("login")}
               <label>
                 Username
                 <input
                   value={loginForm.username}
                   onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, username: event.target.value }))
+                    updateField(setLoginForm, "login", "username", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("login", "username")}
               </label>
               <label>
                 Password
@@ -510,12 +741,15 @@ function App() {
                   type="password"
                   value={loginForm.password}
                   onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, password: event.target.value }))
+                    updateField(setLoginForm, "login", "password", event.target.value)
                   }
                   required
                 />
+                {renderFieldError("login", "password")}
               </label>
-              <button type="submit" disabled={loading}>Login</button>
+              <button type="submit" disabled={loading}>
+                {renderButtonLabel("Login", "Signing in...", "login")}
+              </button>
             </form>
           </section>
         ) : (
@@ -525,7 +759,7 @@ function App() {
                 <span className="panel-label">Current user</span>
                 <h2>{user?.fullName || user?.username}</h2>
                 <p>{user?.role} | KYC: {user?.kycStatus || "Loading"}</p>
-                <p>{user?.occupation || ""}</p>
+                <p>{user?.occupation || user?.email || ""}</p>
                 <button className="secondary" onClick={logout}>Logout</button>
               </div>
               <div className="panel">
@@ -540,20 +774,57 @@ function App() {
               </div>
             </section>
 
+            <section className="panel">
+              <div className="panel-header">
+                <h2>Customer profile</h2>
+                <span className={`kyc-pill ${String(user?.kycStatus || "").toLowerCase()}`}>
+                  {user?.kycStatus || "Loading"}
+                </span>
+              </div>
+              {activeAction === "profile" ? (
+                <p className="loading-note">
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Loading customer profile...
+                </p>
+              ) : null}
+              <div className="profile-grid">
+                <article className="profile-card">
+                  <span>Identity</span>
+                  <strong>{user?.fullName || "Not available"}</strong>
+                  <p>{user?.gender || "Not available"}</p>
+                  <p>Date of birth: {user?.dateOfBirth || "Not available"}</p>
+                </article>
+                <article className="profile-card">
+                  <span>Contact</span>
+                  <strong>{user?.phoneNumber || "Not available"}</strong>
+                  <p>{user?.email || "Not available"}</p>
+                  <p>{user?.occupation || "Not available"}</p>
+                </article>
+                <article className="profile-card profile-card-wide">
+                  <span>Address</span>
+                  <strong>{formatAddress(user) || "Not available"}</strong>
+                  <p>Username: {user?.username || "Not available"}</p>
+                  <p>Role: {user?.role || "Not available"}</p>
+                </article>
+              </div>
+            </section>
+
             <section className="workspace-grid">
               <form className="panel" onSubmit={handleCreateAccount}>
                 <h2>Create account</h2>
+                {renderFormAlert("account")}
                 <label>
                   Account type
                   <select
                     value={accountForm.accountType}
                     onChange={(event) =>
-                      setAccountForm((current) => ({ ...current, accountType: event.target.value }))
+                      updateField(setAccountForm, "account", "accountType", event.target.value)
                     }
                   >
                     <option value="SAVINGS">Savings</option>
                     <option value="CURRENT">Current</option>
                   </select>
+                  {renderFieldError("account", "accountType")}
                 </label>
                 <label>
                   Opening balance
@@ -563,20 +834,31 @@ function App() {
                     step="0.01"
                     value={accountForm.openingBalance}
                     onChange={(event) =>
-                      setAccountForm((current) => ({ ...current, openingBalance: event.target.value }))
+                      updateField(setAccountForm, "account", "openingBalance", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("account", "openingBalance")}
                 </label>
-                <button type="submit" disabled={loading}>Open account</button>
+                <button type="submit" disabled={loading}>
+                  {renderButtonLabel("Open account", "Opening account...", "account")}
+                </button>
                 <p className="muted">Account number will be generated automatically when the account is created.</p>
               </form>
 
               <div className="panel">
                 <div className="panel-header">
                   <h2>Your accounts</h2>
-                  <button className="secondary" onClick={fetchAccounts}>Refresh</button>
+                  <button className="secondary" type="button" onClick={fetchAccounts} disabled={loading}>
+                    {renderButtonLabel("Refresh", "Refreshing...", "accounts")}
+                  </button>
                 </div>
+                {activeAction === "accounts" ? (
+                  <p className="loading-note">
+                    <span className="inline-spinner" aria-hidden="true" />
+                    Loading accounts...
+                  </p>
+                ) : null}
                 <div className="account-list">
                   {accounts.map((account) => (
                     <button
@@ -618,25 +900,27 @@ function App() {
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
                   />
+                  {renderFieldError("balance", "amount")}
                 </label>
                 <div className="button-row">
                   <button type="button" onClick={() => handleBalanceAction("deposit")} disabled={loading}>
-                    Deposit
+                    {renderButtonLabel("Deposit", "Posting...", "balance")}
                   </button>
                   <button type="button" className="secondary" onClick={() => handleBalanceAction("withdraw")} disabled={loading}>
-                    Withdraw
+                    {renderButtonLabel("Withdraw", "Posting...", "balance")}
                   </button>
                 </div>
               </div>
 
               <form className="panel" onSubmit={handleTransfer}>
                 <h2>Transfer funds</h2>
+                {renderFormAlert("transfer")}
                 <label>
                   From account
                   <select
                     value={transferForm.fromAccountNumber}
                     onChange={(event) =>
-                      setTransferForm((current) => ({ ...current, fromAccountNumber: event.target.value }))
+                      updateField(setTransferForm, "transfer", "fromAccountNumber", event.target.value)
                     }
                   >
                     <option value="">Select source</option>
@@ -646,13 +930,14 @@ function App() {
                       </option>
                     ))}
                   </select>
+                  {renderFieldError("transfer", "fromAccountNumber")}
                 </label>
                 <label>
                   Approved beneficiary
                   <select
                     value={transferForm.toAccountNumber}
                     onChange={(event) =>
-                      setTransferForm((current) => ({ ...current, toAccountNumber: event.target.value }))
+                      updateField(setTransferForm, "transfer", "toAccountNumber", event.target.value)
                     }
                   >
                     <option value="">Select beneficiary</option>
@@ -668,10 +953,11 @@ function App() {
                   <input
                     value={transferForm.toAccountNumber}
                     onChange={(event) =>
-                      setTransferForm((current) => ({ ...current, toAccountNumber: event.target.value }))
+                      updateField(setTransferForm, "transfer", "toAccountNumber", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("transfer", "toAccountNumber")}
                 </label>
                 <label>
                   Amount
@@ -681,47 +967,56 @@ function App() {
                     step="0.01"
                     value={transferForm.amount}
                     onChange={(event) =>
-                      setTransferForm((current) => ({ ...current, amount: event.target.value }))
+                      updateField(setTransferForm, "transfer", "amount", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("transfer", "amount")}
                 </label>
-                <button type="submit" disabled={loading}>Transfer</button>
+                <button type="submit" disabled={loading}>
+                  {renderButtonLabel("Transfer", "Transferring...", "transfer")}
+                </button>
               </form>
 
               <form className="panel" onSubmit={handleCreateBeneficiary}>
                 <h2>Add beneficiary</h2>
+                {renderFormAlert("beneficiary")}
                 <label>
                   Nickname
                   <input
                     value={beneficiaryForm.nickname}
                     onChange={(event) =>
-                      setBeneficiaryForm((current) => ({ ...current, nickname: event.target.value }))
+                      updateField(setBeneficiaryForm, "beneficiary", "nickname", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("beneficiary", "nickname")}
                 </label>
                 <label>
                   Bank name
                   <input
                     value={beneficiaryForm.bankName}
                     onChange={(event) =>
-                      setBeneficiaryForm((current) => ({ ...current, bankName: event.target.value }))
+                      updateField(setBeneficiaryForm, "beneficiary", "bankName", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("beneficiary", "bankName")}
                 </label>
                 <label>
                   Beneficiary account
                   <input
                     value={beneficiaryForm.accountNumber}
                     onChange={(event) =>
-                      setBeneficiaryForm((current) => ({ ...current, accountNumber: event.target.value }))
+                      updateField(setBeneficiaryForm, "beneficiary", "accountNumber", event.target.value)
                     }
                     required
                   />
+                  {renderFieldError("beneficiary", "accountNumber")}
                 </label>
-                <button type="submit" disabled={loading}>Save beneficiary</button>
+                <button type="submit" disabled={loading}>
+                  {renderButtonLabel("Save beneficiary", "Saving beneficiary...", "beneficiary")}
+                </button>
               </form>
             </section>
 
@@ -729,11 +1024,17 @@ function App() {
               <div className="panel-header">
                 <h2>Transactions {selectedAccount ? `for ${selectedAccount}` : ""}</h2>
                 {selectedAccount ? (
-                  <button className="secondary" onClick={() => fetchTransactions(selectedAccount)}>
-                    Refresh history
+                  <button className="secondary" type="button" onClick={() => fetchTransactions(selectedAccount)} disabled={loading}>
+                    {renderButtonLabel("Refresh history", "Refreshing...", "transactions")}
                   </button>
                 ) : null}
               </div>
+              {activeAction === "transactions" ? (
+                <p className="loading-note">
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Loading transaction history...
+                </p>
+              ) : null}
               <div className="transaction-list">
                 {transactions.map((entry) => (
                   <article key={entry.id} className="transaction-card">
@@ -752,8 +1053,16 @@ function App() {
             <section className="panel">
               <div className="panel-header">
                 <h2>Approved beneficiaries</h2>
-                <button className="secondary" onClick={fetchBeneficiaries}>Refresh</button>
+                <button className="secondary" type="button" onClick={fetchBeneficiaries} disabled={loading}>
+                  {renderButtonLabel("Refresh", "Refreshing...", "beneficiaries")}
+                </button>
               </div>
+              {activeAction === "beneficiaries" ? (
+                <p className="loading-note">
+                  <span className="inline-spinner" aria-hidden="true" />
+                  Loading beneficiaries...
+                </p>
+              ) : null}
               <div className="transaction-list">
                 {beneficiaries.map((beneficiary) => (
                   <article key={beneficiary.id} className="transaction-card">

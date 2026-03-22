@@ -2,8 +2,9 @@ package com.onlinebanking.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -41,6 +42,7 @@ public class GlobalExceptionHandler {
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Validation failed");
+        body.put("message", "Validation failed");
 
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
@@ -48,6 +50,11 @@ public class GlobalExceptionHandler {
         }
         body.put("fields", fieldErrors);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadablePayload(HttpMessageNotReadableException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request payload");
     }
 
     @ExceptionHandler(Exception.class)
@@ -60,6 +67,7 @@ public class GlobalExceptionHandler {
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
         body.put("error", message);
+        body.put("message", message);
         return ResponseEntity.status(status).body(body);
     }
 }

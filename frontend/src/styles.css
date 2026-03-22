@@ -49,10 +49,18 @@ button:hover {
   background: var(--accent-strong);
 }
 
+button.danger:hover {
+  background: #8d3124;
+}
+
 button.secondary {
   background: transparent;
   color: var(--ink);
   border: 1px solid var(--line);
+}
+
+button.danger {
+  background: var(--danger);
 }
 
 button.notification-close {
@@ -289,6 +297,7 @@ label {
 }
 
 .account-card,
+.admin-customer-card,
 .profile-card,
 .transaction-card {
   text-align: left;
@@ -307,6 +316,7 @@ label {
 }
 
 .account-card span,
+.admin-customer-card span,
 .profile-card span,
 .transaction-card span {
   display: block;
@@ -317,6 +327,7 @@ label {
 }
 
 .account-card strong,
+.admin-customer-card strong,
 .profile-card strong,
 .transaction-card strong {
   display: block;
@@ -324,11 +335,24 @@ label {
   font-size: 1.1rem;
 }
 
+.admin-customer-card p,
 .profile-card p,
 .transaction-card p,
 .transaction-card time {
   margin: 0;
   color: var(--muted);
+}
+
+.admin-customer-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-customer-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: flex-start;
 }
 
 .profile-card {

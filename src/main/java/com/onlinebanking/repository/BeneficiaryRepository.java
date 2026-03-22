@@ -13,4 +13,6 @@ public interface BeneficiaryRepository extends JpaRepository<Beneficiary, Long> 
     Optional<Beneficiary> findByOwnerUsernameIgnoreCaseAndAccountNumberAndActiveTrue(String username, String accountNumber);
 
     List<Beneficiary> findByOwnerUsernameIgnoreCaseOrderByCreatedAtDesc(String username);
+
+    long countByActiveTrue();
 }

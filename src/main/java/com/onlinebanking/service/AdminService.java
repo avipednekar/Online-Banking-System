@@ -1,0 +1,95 @@
+package com.onlinebanking.service;
+
+import com.onlinebanking.dto.AdminCustomerResponse;
+import com.onlinebanking.dto.AdminOverviewResponse;
+import com.onlinebanking.dto.UpdateKycStatusRequest;
+import com.onlinebanking.exception.ResourceNotFoundException;
+import com.onlinebanking.model.BankUser;
+import com.onlinebanking.model.CustomerProfile;
+import com.onlinebanking.model.KycStatus;
+import com.onlinebanking.repository.AccountRepository;
+import com.onlinebanking.repository.BankUserRepository;
+import com.onlinebanking.repository.BeneficiaryRepository;
+import com.onlinebanking.repository.CustomerProfileRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class AdminService {
+
+    private final BankUserRepository bankUserRepository;
+    private final CustomerProfileRepository customerProfileRepository;
+    private final AccountRepository accountRepository;
+    private final BeneficiaryRepository beneficiaryRepository;
+    private final AuditService auditService;
+
+    public AdminService(BankUserRepository bankUserRepository,
+                        CustomerProfileRepository customerProfileRepository,
+                        AccountRepository accountRepository,
+                        BeneficiaryRepository beneficiaryRepository,
+                        AuditService auditService) {
+        this.bankUserRepository = bankUserRepository;
+        this.customerProfileRepository = customerProfileRepository;
+        this.accountRepository = accountRepository;
+        this.beneficiaryRepository = beneficiaryRepository;
+        this.auditService = auditService;
+    }
+
+    public AdminOverviewResponse getOverview() {
+        return new AdminOverviewResponse(
+                bankUserRepository.countByRole(com.onlinebanking.model.UserRole.USER),
+                customerProfileRepository.countByKycStatus(KycStatus.PENDING),
+                customerProfileRepository.countByKycStatus(KycStatus.VERIFIED),
+                customerProfileRepository.countByKycStatus(KycStatus.REJECTED),
+                accountRepository.count(),
+                beneficiaryRepository.countByActiveTrue()
+        );
+    }
+
+    public List<AdminCustomerResponse> getCustomers() {
+        return customerProfileRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(this::toCustomerResponse)
+                .toList();
+    }
+
+    @Transactional
+    public AdminCustomerResponse updateKycStatus(String adminUsername, Long userId, UpdateKycStatusRequest request) {
+        BankUser user = bankUserRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        CustomerProfile profile = customerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
+
+        profile.setKycStatus(request.kycStatus());
+        CustomerProfile savedProfile = customerProfileRepository.save(profile);
+        auditService.log(
+                adminUsername,
+                "KYC_STATUS_UPDATED",
+                "CustomerProfile",
+                String.valueOf(savedProfile.getId()),
+                "KYC set to " + request.kycStatus() + " for customer " + user.getUsername()
+        );
+        return toCustomerResponse(savedProfile);
+    }
+
+    private AdminCustomerResponse toCustomerResponse(CustomerProfile profile) {
+        return new AdminCustomerResponse(
+                profile.getUser().getId(),
+                profile.getUser().getUsername(),
+                profile.getUser().getEmail(),
+                profile.getFullName(),
+                profile.getPhoneNumber(),
+                profile.getGender().name(),
+                profile.getOccupation(),
+                profile.getAddressLine1(),
+                profile.getAddressLine2(),
+                profile.getCity(),
+                profile.getState(),
+                profile.getPostalCode(),
+                profile.getCountry(),
+                profile.getDateOfBirth().toString(),
+                profile.getKycStatus().name()
+        );
+    }
+}

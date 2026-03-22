@@ -56,6 +56,9 @@ const actionDescriptions = {
   accounts: "Refreshing accounts",
   beneficiaries: "Refreshing beneficiaries",
   transactions: "Loading transaction history",
+  adminOverview: "Loading management overview",
+  adminCustomers: "Loading customer registry",
+  kycUpdate: "Updating KYC status",
   register: "Submitting onboarding",
   login: "Signing in",
   account: "Opening account",
@@ -93,6 +96,8 @@ function App() {
   const [transferForm, setTransferForm] = useState(initialTransferForm);
   const [beneficiaryForm, setBeneficiaryForm] = useState(initialBeneficiaryForm);
   const [amount, setAmount] = useState("100.00");
+  const [adminOverview, setAdminOverview] = useState(null);
+  const [adminCustomers, setAdminCustomers] = useState([]);
   const [loadingState, setLoadingState] = useState({ count: 0, action: "" });
   const [notifications, setNotifications] = useState([]);
   const [formErrors, setFormErrors] = useState(initialFormErrors);
@@ -108,12 +113,19 @@ function App() {
 
   useEffect(() => {
     if (token && user) {
-      fetchAccounts();
-      fetchBeneficiaries();
+      if (user.role === "ADMIN") {
+        fetchAdminOverview();
+        fetchAdminCustomers();
+      } else {
+        fetchAccounts();
+        fetchBeneficiaries();
+      }
     } else {
       setAccounts([]);
       setBeneficiaries([]);
       setTransactions([]);
+      setAdminOverview(null);
+      setAdminCustomers([]);
     }
   }, [token, user]);
 
@@ -314,6 +326,49 @@ function App() {
     }
   }
 
+  async function fetchAdminOverview() {
+    try {
+      startLoading("adminOverview");
+      const data = await apiRequest("/api/admin/overview");
+      setAdminOverview(data);
+    } catch (requestError) {
+      handleRequestError("Unable to load admin overview", requestError);
+    } finally {
+      stopLoading();
+    }
+  }
+
+  async function fetchAdminCustomers() {
+    try {
+      startLoading("adminCustomers");
+      const data = await apiRequest("/api/admin/customers");
+      setAdminCustomers(data);
+    } catch (requestError) {
+      handleRequestError("Unable to load customer registry", requestError);
+    } finally {
+      stopLoading();
+    }
+  }
+
+  async function handleKycUpdate(userId, kycStatus) {
+    try {
+      startLoading("kycUpdate");
+      const updated = await apiRequest(`/api/admin/customers/${userId}/kyc`, {
+        method: "PATCH",
+        body: JSON.stringify({ kycStatus })
+      });
+      setAdminCustomers((current) =>
+        current.map((customer) => (customer.userId === updated.userId ? updated : customer))
+      );
+      await fetchAdminOverview();
+      showNotification("success", "KYC updated", `Customer ${updated.username} marked as ${updated.kycStatus}.`);
+    } catch (requestError) {
+      handleRequestError("KYC update failed", requestError);
+    } finally {
+      stopLoading();
+    }
+  }
+
   async function handleRegister(event) {
     event.preventDefault();
     await authenticate("/api/auth/register", registerForm);
@@ -498,6 +553,119 @@ function App() {
     if (!silent) {
       showNotification("info", "Signed out", "You have been logged out.");
     }
+  }
+
+  function renderAdminDashboard() {
+    return (
+      <>
+        <section className="summary-grid">
+          <div className="panel">
+            <span className="panel-label">Central admin</span>
+            <h2>{user?.fullName || user?.username}</h2>
+            <p>{user?.email}</p>
+            <button className="secondary" type="button" onClick={logout}>
+              Logout
+            </button>
+          </div>
+          <div className="panel">
+            <span className="panel-label">Customers</span>
+            <h2>{adminOverview?.totalCustomers ?? 0}</h2>
+            <p>Registered retail customers under review and service.</p>
+          </div>
+          <div className="panel">
+            <span className="panel-label">Pending KYC</span>
+            <h2>{adminOverview?.pendingKyc ?? 0}</h2>
+            <p>Customers waiting for central verification.</p>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Banking system overview</h2>
+            <button className="secondary" type="button" onClick={fetchAdminOverview} disabled={loading}>
+              {renderButtonLabel("Refresh", "Refreshing...", "adminOverview")}
+            </button>
+          </div>
+          {activeAction === "adminOverview" ? (
+            <p className="loading-note">
+              <span className="inline-spinner" aria-hidden="true" />
+              Loading management overview...
+            </p>
+          ) : null}
+          <div className="profile-grid">
+            <article className="profile-card">
+              <span>Verified KYC</span>
+              <strong>{adminOverview?.verifiedKyc ?? 0}</strong>
+              <p>Customers fully cleared for onboarding checks.</p>
+            </article>
+            <article className="profile-card">
+              <span>Rejected KYC</span>
+              <strong>{adminOverview?.rejectedKyc ?? 0}</strong>
+              <p>Profiles blocked pending remediation.</p>
+            </article>
+            <article className="profile-card">
+              <span>Total accounts</span>
+              <strong>{adminOverview?.totalAccounts ?? 0}</strong>
+              <p>Bank accounts under platform management.</p>
+            </article>
+            <article className="profile-card">
+              <span>Active beneficiaries</span>
+              <strong>{adminOverview?.activeBeneficiaries ?? 0}</strong>
+              <p>Approved transfer destinations across customers.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Customer KYC control</h2>
+            <button className="secondary" type="button" onClick={fetchAdminCustomers} disabled={loading}>
+              {renderButtonLabel("Refresh registry", "Refreshing...", "adminCustomers")}
+            </button>
+          </div>
+          {activeAction === "adminCustomers" || activeAction === "kycUpdate" ? (
+            <p className="loading-note">
+              <span className="inline-spinner" aria-hidden="true" />
+              {activeAction === "kycUpdate" ? "Updating KYC status..." : "Loading customer registry..."}
+            </p>
+          ) : null}
+          <div className="transaction-list">
+            {adminCustomers.map((customer) => (
+              <article key={customer.userId} className="admin-customer-card">
+                <div className="admin-customer-header">
+                  <div>
+                    <span>{customer.username}</span>
+                    <strong>{customer.fullName}</strong>
+                    <p>{customer.email}</p>
+                  </div>
+                  <span className={`kyc-pill ${String(customer.kycStatus || "").toLowerCase()}`}>
+                    {customer.kycStatus}
+                  </span>
+                </div>
+                <p>{customer.phoneNumber || "No phone number"}</p>
+                <p>{customer.occupation || "No occupation"} | {customer.gender || "N/A"}</p>
+                <p>{formatAddress(customer) || "No address captured"}</p>
+                <p>Date of birth: {customer.dateOfBirth || "N/A"}</p>
+                <div className="button-row">
+                  <button type="button" onClick={() => handleKycUpdate(customer.userId, "VERIFIED")} disabled={loading}>
+                    Verify
+                  </button>
+                  <button type="button" className="secondary" onClick={() => handleKycUpdate(customer.userId, "PENDING")} disabled={loading}>
+                    Mark pending
+                  </button>
+                  <button type="button" className="danger" onClick={() => handleKycUpdate(customer.userId, "REJECTED")} disabled={loading}>
+                    Reject
+                  </button>
+                </div>
+              </article>
+            ))}
+            {adminCustomers.length === 0 ? (
+              <p className="muted">No customer profiles are available yet.</p>
+            ) : null}
+          </div>
+        </section>
+      </>
+    );
   }
 
   return (
@@ -722,7 +890,10 @@ function App() {
             </form>
 
             <form className="panel" onSubmit={handleLogin}>
-              <h2>Sign in</h2>
+              <h2>Customer and admin sign in</h2>
+              <p className="muted">
+                Central management uses the same secure login endpoint and routes by role after authentication.
+              </p>
               {renderFormAlert("login")}
               <label>
                 Username
@@ -752,6 +923,8 @@ function App() {
               </button>
             </form>
           </section>
+        ) : user?.role === "ADMIN" ? (
+          renderAdminDashboard()
         ) : (
           <>
             <section className="summary-grid">

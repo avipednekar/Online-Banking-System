@@ -9,6 +9,7 @@ import com.onlinebanking.exception.DuplicateResourceException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.CustomerProfile;
+import com.onlinebanking.model.UserRole;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.security.JwtService;
@@ -85,6 +86,26 @@ public class AuthService {
     public UserProfileResponse getCurrentUser(String username) {
         BankUser user = bankUserRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getRole() == UserRole.ADMIN) {
+            return new UserProfileResponse(
+                    user.getId(),
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getRole().name(),
+                    "Central Administrator",
+                    null,
+                    null,
+                    "System Administration",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "VERIFIED"
+            );
+        }
         CustomerProfile profile = customerProfileRepository.findByUserUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
         return new UserProfileResponse(

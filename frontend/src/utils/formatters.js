@@ -19,3 +19,16 @@ export function formatCurrency(value, currencyCode = "INR") {
 export function collectFieldErrors(fields = {}) {
   return Object.values(fields).filter(Boolean);
 }
+
+export function formatDate(value) {
+  if (!value) {
+    return "Not available";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString();
+}

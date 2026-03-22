@@ -1,12 +1,24 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { apiRequest } from "../api/api";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { authService } from "../services/authService";
 
 const TOKEN_STORAGE_KEY = "bank_token";
 const USER_STORAGE_KEY = "bank_user";
 
 const AuthContext = createContext(null);
 
+function readStoredValue(key) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.sessionStorage.getItem(key) || "";
+}
+
 function readStoredUser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const raw = window.sessionStorage.getItem(USER_STORAGE_KEY);
   if (!raw) {
     return null;
@@ -20,7 +32,7 @@ function readStoredUser() {
 }
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || "");
+  const [token, setToken] = useState(() => readStoredValue(TOKEN_STORAGE_KEY));
   const [user, setUser] = useState(readStoredUser);
   const [authReady, setAuthReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
@@ -28,6 +40,10 @@ export function AuthProvider({ children }) {
   function persistSession(nextToken, nextUser) {
     setToken(nextToken);
     setUser(nextUser);
+
+    if (typeof window === "undefined") {
+      return;
+    }
 
     if (nextToken) {
       window.sessionStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
@@ -52,18 +68,18 @@ export function AuthProvider({ children }) {
       return null;
     }
 
-    const profile = await apiRequest("/auth/me", { token: activeToken });
+    const profile = await authService.getProfile(activeToken);
     persistSession(activeToken, profile);
     return profile;
   }
 
-  async function authenticate(path, payload) {
+  async function authenticate(mode, payload) {
     setAuthLoading(true);
     try {
-      const response = await apiRequest(path, {
-        method: "POST",
-        body: payload
-      });
+      const response =
+        mode === "register"
+          ? await authService.register(payload)
+          : await authService.login(payload);
 
       persistSession(response.token, {
         userId: response.userId,
@@ -81,12 +97,12 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function login(credentials) {
-    return authenticate("/auth/login", credentials);
+  function login(credentials) {
+    return authenticate("login", credentials);
   }
 
-  async function register(payload) {
-    return authenticate("/auth/register", payload);
+  function register(payload) {
+    return authenticate("register", payload);
   }
 
   function logout() {
@@ -96,7 +112,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrapSession() {
+    async function bootstrap() {
       if (!token) {
         setAuthReady(true);
         return;
@@ -115,30 +131,30 @@ export function AuthProvider({ children }) {
       }
     }
 
-    bootstrapSession();
+    bootstrap();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        token,
-        user,
-        authReady,
-        authLoading,
-        isAuthenticated: Boolean(token),
-        isAdmin: user?.role === "ADMIN",
-        login,
-        register,
-        logout,
-        refreshProfile
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      token,
+      user,
+      authReady,
+      authLoading,
+      isAuthenticated: Boolean(token),
+      isAdmin: user?.role === "ADMIN",
+      login,
+      register,
+      logout,
+      refreshProfile
+    }),
+    [token, user, authReady, authLoading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

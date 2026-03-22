@@ -37,13 +37,19 @@ export const initialBeneficiaryForm = {
   accountNumber: ""
 };
 
-export function createInitialFormErrors() {
-  return {
-    register: {},
-    login: {},
-    account: {},
-    balance: {},
-    transfer: {},
-    beneficiary: {}
-  };
-}
+export const genderOptions = [
+  { value: "MALE", label: "Male" },
+  { value: "FEMALE", label: "Female" },
+  { value: "OTHER", label: "Other" }
+];
+
+export const accountTypeOptions = [
+  { value: "SAVINGS", label: "Savings" },
+  { value: "CURRENT", label: "Current" }
+];
+
+export const kycStatusOptions = [
+  { value: "VERIFIED", label: "Verify" },
+  { value: "PENDING", label: "Mark pending" },
+  { value: "REJECTED", label: "Reject" }
+];

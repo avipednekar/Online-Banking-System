@@ -34,8 +34,11 @@ export async function apiRequest(path, options = {}) {
   const { token, body, headers, ...rest } = options;
   const response = await fetch(buildUrl(path), {
     ...rest,
+    cache: "no-store",
+    credentials: "same-origin",
     headers: {
-      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers || {})
     },

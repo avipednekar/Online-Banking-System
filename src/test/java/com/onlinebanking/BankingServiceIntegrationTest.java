@@ -2,9 +2,11 @@ package com.onlinebanking;
 
 import com.onlinebanking.dto.CreateAccountRequest;
 import com.onlinebanking.dto.BeneficiaryRequest;
+import com.onlinebanking.dto.BeneficiaryLookupResponse;
 import com.onlinebanking.dto.RegisterRequest;
 import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.exception.BusinessException;
+import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.AccountType;
 import com.onlinebanking.service.AuthService;
 import com.onlinebanking.service.BankingService;
@@ -77,6 +79,29 @@ class BankingServiceIntegrationTest {
 
         assertThrows(BusinessException.class,
                 () -> bankingService.transfer("edgar", new TransferRequest(senderAccount, receiverAccount, new BigDecimal("100.00"))));
+    }
+
+    @Test
+    void beneficiaryLookupReturnsVerifiedAccountDetails() {
+        authService.register(registerRequest("harish", "harish@example.com"));
+        authService.register(registerRequest("irene", "irene@example.com"));
+        String receiverAccount = bankingService.createAccount("irene",
+                new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("900.00"))).accountNumber();
+
+        BeneficiaryLookupResponse lookup = beneficiaryService.lookupBeneficiary("harish", receiverAccount);
+
+        assertEquals(receiverAccount, lookup.accountNumber());
+        assertEquals("Test User irene", lookup.accountHolderName());
+        assertEquals("ACTIVE", lookup.accountStatus());
+    }
+
+    @Test
+    void beneficiaryCreationRejectsUnknownAccountNumber() {
+        authService.register(registerRequest("jatin", "jatin@example.com"));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> beneficiaryService.createBeneficiary("jatin",
+                        new BeneficiaryRequest("Ghost", "Internal Bank", "SAV-99999999")));
     }
 
     @Test

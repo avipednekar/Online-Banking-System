@@ -32,6 +32,8 @@ export function useCustomerWorkspace() {
   const [accountsError, setAccountsError] = useState("");
   const [beneficiariesError, setBeneficiariesError] = useState("");
   const [transactionsError, setTransactionsError] = useState("");
+  const [beneficiaryLookup, setBeneficiaryLookup] = useState(null);
+  const [beneficiaryLookupError, setBeneficiaryLookupError] = useState("");
 
   const totalBalance = useMemo(
     () => accounts.reduce((sum, account) => sum + Number(account.balance), 0),
@@ -108,6 +110,46 @@ export function useCustomerWorkspace() {
   function logoutUser() {
     logout();
     notifyInfo("Signed out", "You have been logged out.");
+  }
+
+  function updateBeneficiaryField(field, value) {
+    beneficiaryForm.setValue(field, value);
+
+    if (field === "accountNumber") {
+      setBeneficiaryLookup(null);
+      setBeneficiaryLookupError("");
+    }
+  }
+
+  async function verifyBeneficiaryAccount(accountNumber = beneficiaryForm.values.accountNumber, notifyOnError = false) {
+    const normalizedAccountNumber = String(accountNumber || "").trim();
+    if (!normalizedAccountNumber) {
+      setBeneficiaryLookup(null);
+      setBeneficiaryLookupError("");
+      return null;
+    }
+
+    tracker.startAction("beneficiaryLookup");
+    setBeneficiaryLookupError("");
+    try {
+      const verified = await customerService.lookupBeneficiary(token, normalizedAccountNumber);
+      setBeneficiaryLookup(verified);
+      beneficiaryForm.setValue("bankName", verified.bankName);
+      return verified;
+    } catch (error) {
+      setBeneficiaryLookup(null);
+      setBeneficiaryLookupError(error.message || "Unable to verify beneficiary account.");
+      beneficiaryForm.setErrors((current) => ({
+        ...current,
+        accountNumber: error.message || "Unable to verify beneficiary account."
+      }));
+      if (notifyOnError) {
+        handleSessionError(error, "Beneficiary verification failed");
+      }
+      return null;
+    } finally {
+      tracker.finishAction("beneficiaryLookup");
+    }
   }
 
   async function createAccount(event) {
@@ -213,11 +255,27 @@ export function useCustomerWorkspace() {
       return;
     }
 
+    let verifiedAccount = beneficiaryLookup;
+    if (
+      !verifiedAccount ||
+      verifiedAccount.accountNumber !== String(beneficiaryForm.values.accountNumber || "").trim()
+    ) {
+      verifiedAccount = await verifyBeneficiaryAccount(beneficiaryForm.values.accountNumber, true);
+      if (!verifiedAccount) {
+        return;
+      }
+    }
+
     tracker.startAction("beneficiary");
     try {
-      const created = await customerService.createBeneficiary(token, beneficiaryForm.values);
+      const created = await customerService.createBeneficiary(token, {
+        ...beneficiaryForm.values,
+        bankName: verifiedAccount.bankName
+      });
       setBeneficiaries((current) => [created, ...current]);
       beneficiaryForm.reset(initialBeneficiaryForm);
+      setBeneficiaryLookup(null);
+      setBeneficiaryLookupError("");
       transferForm.setValues((current) => ({
         ...current,
         toAccountNumber: created.accountNumber
@@ -245,6 +303,8 @@ export function useCustomerWorkspace() {
     accountForm,
     transferForm,
     beneficiaryForm,
+    beneficiaryLookup,
+    beneficiaryLookupError,
     tracker,
     accountsError,
     beneficiariesError,
@@ -256,6 +316,8 @@ export function useCustomerWorkspace() {
     createAccount,
     postBalanceAction,
     createTransfer,
-    createBeneficiary
+    createBeneficiary,
+    updateBeneficiaryField,
+    verifyBeneficiaryAccount
   };
 }

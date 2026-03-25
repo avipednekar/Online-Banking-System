@@ -2,19 +2,20 @@ package com.onlinebanking.controller;
 
 import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.AmountRequest;
+import com.onlinebanking.dto.ApiResponse;
 import com.onlinebanking.dto.CreateAccountRequest;
 import com.onlinebanking.dto.TransactionResponse;
 import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.service.BankingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,47 +31,63 @@ public class AccountController {
     }
 
     @PostMapping("/accounts")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AccountResponse createAccount(Authentication authentication,
-                                         @Valid @RequestBody CreateAccountRequest request) {
-        return bankingService.createAccount(authentication.getName(), request);
+    public ResponseEntity<ApiResponse<AccountResponse>> createAccount(Authentication authentication,
+                                                                     @Valid @RequestBody CreateAccountRequest request) {
+        AccountResponse response = bankingService.createAccount(authentication.getName(), request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Account created successfully", response));
     }
 
     @GetMapping("/accounts")
-    public List<AccountResponse> getUserAccounts(Authentication authentication) {
-        return bankingService.getAccountsForUser(authentication.getName());
+    public ResponseEntity<ApiResponse<List<AccountResponse>>> getUserAccounts(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Accounts fetched successfully",
+                bankingService.getAccountsForUser(authentication.getName())
+        ));
     }
 
     @GetMapping("/accounts/{accountNumber}")
-    public AccountResponse getAccount(Authentication authentication,
-                                      @PathVariable String accountNumber) {
-        return bankingService.getAccount(authentication.getName(), accountNumber);
+    public ResponseEntity<ApiResponse<AccountResponse>> getAccount(Authentication authentication,
+                                                                  @PathVariable String accountNumber) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Account fetched successfully",
+                bankingService.getAccount(authentication.getName(), accountNumber)
+        ));
     }
 
     @PostMapping("/accounts/{accountNumber}/deposit")
-    public AccountResponse deposit(Authentication authentication,
-                                   @PathVariable String accountNumber,
-                                   @Valid @RequestBody AmountRequest request) {
-        return bankingService.deposit(authentication.getName(), accountNumber, request.amount());
+    public ResponseEntity<ApiResponse<AccountResponse>> deposit(Authentication authentication,
+                                                               @PathVariable String accountNumber,
+                                                               @Valid @RequestBody AmountRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Deposit completed successfully",
+                bankingService.deposit(authentication.getName(), accountNumber, request.amount())
+        ));
     }
 
     @PostMapping("/accounts/{accountNumber}/withdraw")
-    public AccountResponse withdraw(Authentication authentication,
-                                    @PathVariable String accountNumber,
-                                    @Valid @RequestBody AmountRequest request) {
-        return bankingService.withdraw(authentication.getName(), accountNumber, request.amount());
+    public ResponseEntity<ApiResponse<AccountResponse>> withdraw(Authentication authentication,
+                                                                @PathVariable String accountNumber,
+                                                                @Valid @RequestBody AmountRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Withdrawal completed successfully",
+                bankingService.withdraw(authentication.getName(), accountNumber, request.amount())
+        ));
     }
 
     @PostMapping("/accounts/transfer")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void transfer(Authentication authentication,
-                         @Valid @RequestBody TransferRequest request) {
+    public ResponseEntity<ApiResponse<Void>> transfer(Authentication authentication,
+                                                      @Valid @RequestBody TransferRequest request) {
         bankingService.transfer(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Transfer completed successfully", null));
     }
 
     @GetMapping("/accounts/{accountNumber}/transactions")
-    public List<TransactionResponse> getTransactions(Authentication authentication,
-                                                     @PathVariable String accountNumber) {
-        return bankingService.getTransactions(authentication.getName(), accountNumber);
+    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getTransactions(Authentication authentication,
+                                                                                 @PathVariable String accountNumber) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Transactions fetched successfully",
+                bankingService.getTransactions(authentication.getName(), accountNumber)
+        ));
     }
 }

@@ -20,6 +20,8 @@ import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
 import com.onlinebanking.repository.TransactionRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -31,6 +33,7 @@ import java.util.List;
 public class BankingService {
 
     private static final BigDecimal MIN_BALANCE = new BigDecimal("100.00");
+    private static final Logger log = LoggerFactory.getLogger(BankingService.class);
 
     private final AccountRepository accountRepository;
     private final BankUserRepository bankUserRepository;
@@ -83,6 +86,7 @@ public class BankingService {
         saveLedgerEntry(savedAccount, transaction, LedgerEntryType.CREDIT, openingBalance, "Account opening balance");
         auditService.log(username, "ACCOUNT_CREATED", "Account", savedAccount.getAccountNumber(),
                 "Account opened with status " + savedAccount.getStatus());
+        log.info("Account {} created for user {}", savedAccount.getAccountNumber(), username);
         return toAccountResponse(savedAccount);
     }
 
@@ -116,6 +120,7 @@ public class BankingService {
         saveLedgerEntry(saved, transaction, LedgerEntryType.CREDIT, normalizedAmount, "Deposit posted");
         auditService.log(username, "DEPOSIT_POSTED", "Account", saved.getAccountNumber(),
                 "Deposit amount " + normalizedAmount);
+        log.info("Deposit posted for account {} by user {}", saved.getAccountNumber(), username);
         return toAccountResponse(saved);
     }
 
@@ -143,6 +148,7 @@ public class BankingService {
         saveLedgerEntry(saved, transaction, LedgerEntryType.DEBIT, normalizedAmount, "Withdrawal posted");
         auditService.log(username, "WITHDRAWAL_POSTED", "Account", saved.getAccountNumber(),
                 "Withdrawal amount " + normalizedAmount);
+        log.info("Withdrawal posted for account {} by user {}", saved.getAccountNumber(), username);
         return toAccountResponse(saved);
     }
 
@@ -197,6 +203,7 @@ public class BankingService {
                 "Transfer from " + fromAccount.getAccountNumber());
         auditService.log(username, "TRANSFER_POSTED", "Account", fromAccount.getAccountNumber(),
                 "Transfer of " + normalizedAmount + " to " + toAccount.getAccountNumber());
+        log.info("Transfer posted from {} to {} by user {}", fromAccount.getAccountNumber(), toAccount.getAccountNumber(), username);
     }
 
     public List<TransactionResponse> getTransactions(String username, String accountNumber) {

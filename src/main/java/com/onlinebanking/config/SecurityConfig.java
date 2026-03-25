@@ -2,6 +2,7 @@ package com.onlinebanking.config;
 
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.security.JwtAuthenticationFilter;
+import com.onlinebanking.security.SecurityErrorResponseWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,11 +29,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final BankUserRepository bankUserRepository;
+    private final SecurityErrorResponseWriter securityErrorResponseWriter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          BankUserRepository bankUserRepository) {
+                          BankUserRepository bankUserRepository,
+                          SecurityErrorResponseWriter securityErrorResponseWriter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.bankUserRepository = bankUserRepository;
+        this.securityErrorResponseWriter = securityErrorResponseWriter;
     }
 
     @Bean
@@ -41,11 +46,21 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frame -> frame.deny())
+                        .referrerPolicy(policy -> policy.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'none'; frame-ancestors 'none'; form-action 'none'"
+                        ))
+                )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(401, "Unauthorized"))
+                                securityErrorResponseWriter.write(request, response,
+                                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Unauthorized"))
                         .accessDeniedHandler((request, response, exception) ->
-                                response.sendError(403, "Access denied"))
+                                securityErrorResponseWriter.write(request, response,
+                                        org.springframework.http.HttpStatus.FORBIDDEN, "Access denied"))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -79,7 +94,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

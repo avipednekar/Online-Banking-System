@@ -12,12 +12,16 @@ import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class AdminService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
 
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
@@ -70,6 +74,7 @@ public class AdminService {
                 String.valueOf(savedProfile.getId()),
                 "KYC set to " + request.kycStatus() + " for customer " + user.getUsername()
         );
+        log.info("Admin {} set KYC status {} for user {}", adminUsername, request.kycStatus(), user.getUsername());
         return toCustomerResponse(savedProfile);
     }
 

@@ -12,9 +12,16 @@ export function BeneficiariesPanel({
   isLoading,
   loadError,
   saveLoading,
+  lookup,
+  lookupError,
+  lookupLoading,
   onRefresh,
-  onSubmit
+  onSubmit,
+  onFieldChange,
+  onVerifyAccount
 }) {
+  const isVerified = lookup?.accountNumber === String(form.values.accountNumber || "").trim();
+
   return (
     <Panel>
       <SectionHeader
@@ -36,7 +43,7 @@ export function BeneficiariesPanel({
           label="Nickname"
           name="nickname"
           value={form.values.nickname}
-          onChange={form.setValue}
+          onChange={onFieldChange}
           error={form.errors.nickname}
           required
         />
@@ -44,25 +51,51 @@ export function BeneficiariesPanel({
           label="Bank name"
           name="bankName"
           value={form.values.bankName}
-          onChange={form.setValue}
+          onChange={onFieldChange}
           error={form.errors.bankName}
+          disabled
           required
         />
         <FormField
           label="Beneficiary account"
           name="accountNumber"
           value={form.values.accountNumber}
-          onChange={form.setValue}
+          onChange={onFieldChange}
+          onBlur={() => onVerifyAccount(form.values.accountNumber)}
           error={form.errors.accountNumber}
           required
         />
-        <SubmitButton
-          isLoading={saveLoading}
-          idleLabel="Save beneficiary"
-          loadingLabel="Saving beneficiary..."
-          disabled={saveLoading}
-        />
+        <div className="button-row">
+          <SubmitButton
+            type="button"
+            variant="secondary"
+            isLoading={lookupLoading}
+            idleLabel="Verify account"
+            loadingLabel="Verifying..."
+            onClick={() => onVerifyAccount(form.values.accountNumber)}
+            disabled={lookupLoading}
+          />
+          <SubmitButton
+            isLoading={saveLoading}
+            idleLabel="Save beneficiary"
+            loadingLabel="Saving beneficiary..."
+            disabled={saveLoading || lookupLoading || !isVerified}
+          />
+        </div>
       </form>
+      {lookupError ? (
+        <SectionErrorState title="Beneficiary verification failed" message={lookupError} />
+      ) : null}
+      {isVerified ? (
+        <article className="profile-card">
+          <span>Verified beneficiary</span>
+          <strong>{lookup.accountHolderName}</strong>
+          <p>{lookup.accountNumber}</p>
+          <p>
+            {lookup.accountType} | {lookup.accountStatus} | {lookup.bankName}
+          </p>
+        </article>
+      ) : null}
       {isLoading ? (
         <LoadingState compact title="Loading beneficiaries" message="Fetching transfer destinations." />
       ) : null}
@@ -88,6 +121,7 @@ export function BeneficiariesPanel({
             <span>{beneficiary.bankName}</span>
             <strong>{beneficiary.nickname}</strong>
             <p>{beneficiary.accountNumber}</p>
+            <p>{beneficiary.accountHolderName}</p>
             <time>{new Date(beneficiary.createdAt).toLocaleString()}</time>
           </article>
         ))}

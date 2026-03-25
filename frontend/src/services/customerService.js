@@ -38,6 +38,9 @@ export const customerService = {
   getBeneficiaries(token) {
     return apiRequest("/beneficiaries", { token });
   },
+  lookupBeneficiary(token, accountNumber) {
+    return apiRequest(`/beneficiaries/lookup/${accountNumber}`, { token });
+  },
   createBeneficiary(token, payload) {
     return apiRequest("/beneficiaries", {
       method: "POST",

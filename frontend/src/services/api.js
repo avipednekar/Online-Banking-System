@@ -14,6 +14,26 @@ function buildUrl(path) {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+function unwrapEnvelope(payload) {
+  if (!payload || typeof payload !== "object" || !("success" in payload) || !("data" in payload)) {
+    return payload;
+  }
+
+  const unwrapped = payload.data;
+  if (Array.isArray(unwrapped) || unwrapped === null || unwrapped === undefined) {
+    return unwrapped;
+  }
+
+  if (typeof unwrapped === "object") {
+    return {
+      ...unwrapped,
+      message: payload.message || unwrapped.message
+    };
+  }
+
+  return unwrapped;
+}
+
 async function parseResponse(response) {
   const raw = await response.text();
   if (!raw) {
@@ -58,5 +78,5 @@ export async function apiRequest(path, options = {}) {
     );
   }
 
-  return data;
+  return unwrapEnvelope(data);
 }

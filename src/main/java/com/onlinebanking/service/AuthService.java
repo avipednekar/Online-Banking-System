@@ -14,11 +14,15 @@ import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.security.JwtService;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
@@ -69,6 +73,7 @@ public class AuthService {
         ));
         auditService.log(savedUser.getUsername(), "USER_REGISTERED", "BankUser", String.valueOf(savedUser.getId()),
                 "New customer registered");
+        log.info("Registered new user {}", savedUser.getUsername());
         return buildAuthResponse(savedUser, "User registered successfully");
     }
 
@@ -77,9 +82,11 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException("Invalid username or password"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            log.warn("Failed login attempt for user {}", request.username().trim());
             throw new BusinessException("Invalid username or password");
         }
 
+        log.info("User {} authenticated successfully", user.getUsername());
         return buildAuthResponse(user, "Login successful");
     }
 

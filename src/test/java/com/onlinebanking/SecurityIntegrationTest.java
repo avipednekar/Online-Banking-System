@@ -30,7 +30,10 @@ class SecurityIntegrationTest {
     @Test
     void securedEndpointRejectsAnonymousRequest() throws Exception {
         mockMvc.perform(get("/api/accounts"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Unauthorized"))
+                .andExpect(jsonPath("$.path").value("/api/accounts"));
     }
 
     @Test
@@ -56,8 +59,10 @@ class SecurityIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").isString())
-                .andExpect(jsonPath("$.role").value("USER"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("User registered successfully"))
+                .andExpect(jsonPath("$.data.token").isString())
+                .andExpect(jsonPath("$.data.role").value("USER"));
     }
 
     @Test
@@ -86,24 +91,42 @@ class SecurityIntegrationTest {
                 .andReturn();
 
         JsonNode authResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
-        String token = authResponse.get("token").asText();
+        String token = authResponse.get("data").get("token").asText();
 
         mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("mia"))
-                .andExpect(jsonPath("$.email").value("mia@example.com"))
-                .andExpect(jsonPath("$.fullName").value("Mia Fernandez"))
-                .andExpect(jsonPath("$.phoneNumber").value("9998887776"))
-                .andExpect(jsonPath("$.gender").value("FEMALE"))
-                .andExpect(jsonPath("$.occupation").value("Designer"))
-                .andExpect(jsonPath("$.addressLine1").value("7 Palm Residency"))
-                .andExpect(jsonPath("$.addressLine2").value("Block C"))
-                .andExpect(jsonPath("$.city").value("Pune"))
-                .andExpect(jsonPath("$.state").value("Maharashtra"))
-                .andExpect(jsonPath("$.postalCode").value("411001"))
-                .andExpect(jsonPath("$.country").value("India"))
-                .andExpect(jsonPath("$.dateOfBirth").value("1996-04-21"))
-                .andExpect(jsonPath("$.kycStatus").value("PENDING"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.username").value("mia"))
+                .andExpect(jsonPath("$.data.email").value("mia@example.com"))
+                .andExpect(jsonPath("$.data.fullName").value("Mia Fernandez"))
+                .andExpect(jsonPath("$.data.phoneNumber").value("9998887776"))
+                .andExpect(jsonPath("$.data.gender").value("FEMALE"))
+                .andExpect(jsonPath("$.data.occupation").value("Designer"))
+                .andExpect(jsonPath("$.data.addressLine1").value("7 Palm Residency"))
+                .andExpect(jsonPath("$.data.addressLine2").value("Block C"))
+                .andExpect(jsonPath("$.data.city").value("Pune"))
+                .andExpect(jsonPath("$.data.state").value("Maharashtra"))
+                .andExpect(jsonPath("$.data.postalCode").value("411001"))
+                .andExpect(jsonPath("$.data.country").value("India"))
+                .andExpect(jsonPath("$.data.dateOfBirth").value("1996-04-21"))
+                .andExpect(jsonPath("$.data.kycStatus").value("PENDING"));
+    }
+
+    @Test
+    void invalidLoginPayloadReturnsStructuredValidationErrors() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "bad user",
+                                  "password": ""
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fields.username").exists())
+                .andExpect(jsonPath("$.fields.password").exists());
     }
 }

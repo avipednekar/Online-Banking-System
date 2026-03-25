@@ -7,6 +7,7 @@ public record BeneficiaryResponse(
         String nickname,
         String bankName,
         String accountNumber,
+        String accountHolderName,
         boolean active,
         LocalDateTime createdAt
 ) {

@@ -2,9 +2,11 @@ package com.onlinebanking.controller;
 
 import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
+import com.onlinebanking.dto.ApiResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.service.AdminService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,19 +28,22 @@ public class AdminController {
     }
 
     @GetMapping("/overview")
-    public AdminOverviewResponse getOverview() {
-        return adminService.getOverview();
+    public ResponseEntity<ApiResponse<AdminOverviewResponse>> getOverview() {
+        return ResponseEntity.ok(ApiResponse.success("Admin overview fetched successfully", adminService.getOverview()));
     }
 
     @GetMapping("/customers")
-    public List<AdminCustomerResponse> getCustomers() {
-        return adminService.getCustomers();
+    public ResponseEntity<ApiResponse<List<AdminCustomerResponse>>> getCustomers() {
+        return ResponseEntity.ok(ApiResponse.success("Customers fetched successfully", adminService.getCustomers()));
     }
 
     @PatchMapping("/customers/{userId}/kyc")
-    public AdminCustomerResponse updateKycStatus(Authentication authentication,
-                                                 @PathVariable Long userId,
-                                                 @Valid @RequestBody UpdateKycStatusRequest request) {
-        return adminService.updateKycStatus(authentication.getName(), userId, request);
+    public ResponseEntity<ApiResponse<AdminCustomerResponse>> updateKycStatus(Authentication authentication,
+                                                                             @PathVariable Long userId,
+                                                                             @Valid @RequestBody UpdateKycStatusRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "KYC status updated successfully",
+                adminService.updateKycStatus(authentication.getName(), userId, request)
+        ));
     }
 }

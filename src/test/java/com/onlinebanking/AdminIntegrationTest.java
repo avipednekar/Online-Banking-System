@@ -54,7 +54,7 @@ class AdminIntegrationTest {
                 .andReturn();
 
         JsonNode userResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
-        Long userId = userResponse.get("userId").asLong();
+        Long userId = userResponse.get("data").get("userId").asLong();
 
         MvcResult adminLogin = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,17 +65,18 @@ class AdminIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"))
                 .andReturn();
 
         JsonNode adminResponse = objectMapper.readTree(adminLogin.getResponse().getContentAsString());
-        String adminToken = adminResponse.get("token").asText();
+        String adminToken = adminResponse.get("data").get("token").asText();
 
         mockMvc.perform(get("/api/admin/customers")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].username").value("sara"))
-                .andExpect(jsonPath("$[0].kycStatus").value("PENDING"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].username").value("sara"))
+                .andExpect(jsonPath("$.data[0].kycStatus").value("PENDING"));
 
         mockMvc.perform(patch("/api/admin/customers/{userId}/kyc", userId)
                         .header("Authorization", "Bearer " + adminToken)
@@ -86,7 +87,8 @@ class AdminIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("sara"))
-                .andExpect(jsonPath("$.kycStatus").value("VERIFIED"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.username").value("sara"))
+                .andExpect(jsonPath("$.data.kycStatus").value("VERIFIED"));
     }
 }

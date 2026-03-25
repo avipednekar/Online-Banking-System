@@ -5,6 +5,7 @@ export const FormField = memo(function FormField({
   name,
   value,
   onChange,
+  onBlur,
   error,
   as = "input",
   type = "text",
@@ -22,6 +23,7 @@ export const FormField = memo(function FormField({
           name={name}
           value={value}
           onChange={(event) => onChange(name, event.target.value)}
+          onBlur={(event) => onBlur?.(name, event.target.value, event)}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${name}-error` : undefined}
           required={required}
@@ -39,6 +41,7 @@ export const FormField = memo(function FormField({
           type={type}
           value={value}
           onChange={(event) => onChange(name, event.target.value)}
+          onBlur={(event) => onBlur?.(name, event.target.value, event)}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${name}-error` : undefined}
           required={required}

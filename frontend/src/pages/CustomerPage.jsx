@@ -78,8 +78,13 @@ export default function CustomerPage() {
           isLoading={workspace.tracker.isPending("beneficiaries")}
           loadError={workspace.beneficiariesError}
           saveLoading={workspace.tracker.isPending("beneficiary")}
+          lookup={workspace.beneficiaryLookup}
+          lookupError={workspace.beneficiaryLookupError}
+          lookupLoading={workspace.tracker.isPending("beneficiaryLookup")}
           onRefresh={workspace.loadBeneficiaries}
           onSubmit={workspace.createBeneficiary}
+          onFieldChange={workspace.updateBeneficiaryField}
+          onVerifyAccount={workspace.verifyBeneficiaryAccount}
         />
         <TransactionsPanel
           transactions={workspace.transactions}

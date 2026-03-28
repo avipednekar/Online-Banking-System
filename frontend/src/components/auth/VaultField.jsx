@@ -18,24 +18,24 @@ export function VaultField({
 }) {
   const isSelect = as === "select";
   const controlClassName = [
-    "h-8 w-full border-0 border-b-2 bg-transparent text-sm font-medium text-[#102146] outline-none transition placeholder:text-[#9aa6bf] focus:ring-0",
-    Icon ? "pl-6" : "",
-    trailing || isSelect ? "pr-9" : "pr-1",
-    error ? "border-rose-400" : "border-[#bcc6d9] focus:border-[#1fce91]"
+    "vault-field-control",
+    Icon ? "has-leading-icon" : "",
+    trailing || isSelect ? "has-trailing-control" : "",
+    error ? "has-error" : ""
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <label className={`block ${className}`.trim()}>
-      <span className="mb-2 block text-[0.64rem] font-semibold uppercase tracking-[0.24em] text-[#7083ab]">
+    <label className={`vault-field ${className}`.trim()}>
+      <span className="vault-field-label">
         {label}
       </span>
-      <div className="group relative rounded-2xl bg-[#f2f4f6] px-4 pb-3 pt-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition duration-200 hover:bg-[#edf1f6] focus-within:bg-white">
+      <div className="vault-field-shell">
         {Icon ? (
           <Icon
             aria-hidden="true"
-            className="pointer-events-none absolute left-4 top-[1.05rem] h-4 w-4 text-[#7e8ba8] transition group-focus-within:text-[#1fce91]"
+            className="vault-field-icon"
             strokeWidth={1.8}
           />
         ) : null}
@@ -49,7 +49,7 @@ export function VaultField({
               aria-invalid={Boolean(error)}
               aria-describedby={error ? `${name}-error` : undefined}
               required={required}
-              className={`${controlClassName} appearance-none`}
+              className={`${controlClassName} vault-select`.trim()}
               {...rest}
             >
               {options.map((option) => (
@@ -60,7 +60,7 @@ export function VaultField({
             </select>
             <ChevronDown
               aria-hidden="true"
-              className="pointer-events-none absolute right-4 top-[1.05rem] h-4 w-4 text-[#7e8ba8]"
+              className="vault-field-chevron"
               strokeWidth={1.8}
             />
           </>
@@ -78,10 +78,10 @@ export function VaultField({
             {...rest}
           />
         )}
-        {trailing ? <div className="absolute inset-y-0 right-3 flex items-center">{trailing}</div> : null}
+        {trailing ? <div className="vault-field-trailing">{trailing}</div> : null}
       </div>
       {error ? (
-        <span id={`${name}-error`} className="mt-2 block text-xs font-medium text-rose-600">
+        <span id={`${name}-error`} className="vault-field-error">
           {error}
         </span>
       ) : null}

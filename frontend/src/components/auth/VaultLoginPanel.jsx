@@ -7,9 +7,14 @@ export function VaultLoginPanel({ form, isLoading, onSubmit }) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 flex flex-1 flex-col">
+    <form onSubmit={onSubmit} className="vault-auth-form vault-login-form">
       <VaultSectionHeading step="01" title="Secure Sign In" />
-      <div className="mt-4 grid gap-4">
+      <p className="vault-form-intro">
+        Authenticate through the same verified entry point used to route customer and operator
+        access.
+      </p>
+
+      <div className="vault-field-grid">
         <VaultField
           label="Username"
           name="username"
@@ -34,7 +39,7 @@ export function VaultLoginPanel({ form, isLoading, onSubmit }) {
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="rounded-full bg-transparent p-2 text-[#7282a2] hover:translate-y-0 hover:bg-white hover:text-[#102146]"
+              className="vault-icon-button"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
@@ -47,10 +52,10 @@ export function VaultLoginPanel({ form, isLoading, onSubmit }) {
         />
       </div>
 
-      <div className="mt-6 rounded-[24px] bg-[#f2f4f6] p-5 text-sm leading-7 text-[#5d6f94]">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[#1fce91]" strokeWidth={1.9} />
-          <p className="m-0">
+      <div className="vault-login-note">
+        <div className="vault-note-row">
+          <ShieldCheck className="vault-note-icon" strokeWidth={1.9} />
+          <p>
             Role-aware access keeps customer and administrative sessions behind the same verified
             entry point without exposing separate login surfaces.
           </p>
@@ -60,10 +65,10 @@ export function VaultLoginPanel({ form, isLoading, onSubmit }) {
       <button
         type="submit"
         disabled={isLoading}
-        className="mt-8 inline-flex items-center justify-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#00113a,#758dd5)] px-6 py-4 text-sm font-semibold text-white shadow-[0_24px_48px_-30px_rgba(0,17,58,0.9)] transition duration-200 hover:translate-y-0 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+        className="vault-primary-button vault-form-submit"
       >
         {isLoading ? "Authenticating access..." : "Enter Secure Workspace"}
-        <ArrowRight className="h-4 w-4" strokeWidth={2} />
+        <ArrowRight size={16} strokeWidth={2} />
       </button>
     </form>
   );

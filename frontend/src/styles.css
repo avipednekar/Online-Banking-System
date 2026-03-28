@@ -1625,6 +1625,903 @@ select:focus {
   margin: 0;
 }
 
+.vault-login-page,
+.vault-register-page,
+.vault-register-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: calc(100vh - 3rem);
+}
+
+.vault-login-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  min-height: calc(100vh - 8rem);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.vault-login-brand-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2.5rem;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(38, 112, 194, 0.18), transparent 24%),
+    linear-gradient(180deg, #020b20 0%, #03112f 100%);
+  color: #fff;
+}
+
+.vault-login-brand-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(0, 94, 255, 0.12), transparent 35%),
+    linear-gradient(180deg, rgba(0, 17, 58, 0.28), rgba(0, 17, 58, 0.48));
+  opacity: 0.9;
+}
+
+.vault-login-network {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.vault-login-network::before,
+.vault-login-network::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  border-top: 1px solid rgba(117, 141, 213, 0.16);
+  box-shadow:
+    0 0 18px rgba(117, 141, 213, 0.22),
+    0 0 44px rgba(31, 206, 145, 0.06);
+}
+
+.vault-login-network::before {
+  top: 46%;
+  transform: rotate(9deg);
+}
+
+.vault-login-network::after {
+  top: 54%;
+  transform: rotate(-7deg);
+}
+
+.vault-login-network span {
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(117, 141, 213, 0.75);
+  box-shadow: 0 0 0 4px rgba(117, 141, 213, 0.08), 0 0 14px rgba(117, 141, 213, 0.4);
+}
+
+.vault-login-network span:nth-child(1) {
+  top: 38%;
+  left: 18%;
+}
+
+.vault-login-network span:nth-child(2) {
+  top: 31%;
+  left: 48%;
+}
+
+.vault-login-network span:nth-child(3) {
+  top: 44%;
+  right: 26%;
+}
+
+.vault-login-network span:nth-child(4) {
+  bottom: 34%;
+  left: 28%;
+}
+
+.vault-login-network span:nth-child(5) {
+  bottom: 29%;
+  right: 18%;
+}
+
+.vault-login-brand-content {
+  position: relative;
+  z-index: 1;
+  width: min(28rem, 100%);
+  text-align: center;
+}
+
+.vault-login-shield {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.6rem;
+  color: #53efb6;
+}
+
+.vault-login-brand-content h1 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(3rem, 4.5vw, 4.4rem);
+  font-weight: 800;
+  letter-spacing: -0.07em;
+}
+
+.vault-login-brand-content p {
+  margin: 1rem auto 0;
+  max-width: 22rem;
+  color: rgba(186, 199, 232, 0.92);
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.vault-login-badges {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 3.5rem;
+}
+
+.vault-login-badges div {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  color: rgba(193, 206, 240, 0.84);
+}
+
+.vault-login-badges span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.vault-login-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2.25rem;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.vault-login-form-wrap {
+  width: min(25rem, 100%);
+}
+
+.vault-login-mobile-brand {
+  display: none;
+}
+
+.vault-login-home-link,
+.vault-login-back-link,
+.vault-login-signup a {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.vault-login-back-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+}
+
+.vault-login-header h2 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+
+.vault-login-header p {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+}
+
+.vault-login-form-card {
+  margin-top: 2rem;
+}
+
+.vault-login-field {
+  display: block;
+  margin-top: 1rem;
+}
+
+.vault-login-field > span,
+.vault-login-password-header span {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.vault-login-input-shell {
+  position: relative;
+  background: #eceef0;
+}
+
+.vault-login-input,
+.vault-login-input-shell input {
+  width: 100%;
+  margin-top: 0;
+  padding: 1rem 1rem 1rem 2.45rem;
+  border: 0;
+  border-bottom: 2px solid #757682;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-strong);
+  font-weight: 500;
+}
+
+.vault-login-input.has-trailing {
+  padding-right: 2.75rem;
+}
+
+.vault-login-input:focus,
+.vault-login-input-shell input:focus {
+  box-shadow: none;
+  border-bottom-color: #4edea3;
+}
+
+.vault-login-input::placeholder {
+  color: #758199;
+}
+
+.vault-login-input-icon,
+.vault-login-input-trailing {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757682;
+}
+
+.vault-login-input-icon {
+  left: 0.8rem;
+}
+
+.vault-login-input-trailing {
+  right: 0.5rem;
+}
+
+.vault-login-password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.vault-login-text-action,
+.vault-login-visibility {
+  padding: 0;
+  background: transparent;
+  color: #647089;
+}
+
+.vault-login-text-action {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.vault-login-text-action:hover,
+.vault-login-visibility:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.vault-login-text-action:disabled,
+.vault-login-alt-button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.vault-login-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.vault-login-remember input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  border-radius: 4px;
+  accent-color: var(--accent);
+}
+
+.vault-login-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  margin-top: 1.45rem;
+  padding: 1rem 1.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00113a 0%, #6b82cf 100%);
+  color: #fff;
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  box-shadow: 0 18px 32px -22px rgba(0, 17, 58, 0.85);
+}
+
+.vault-login-divider {
+  position: relative;
+  margin: 2.2rem 0 1.6rem;
+  text-align: center;
+}
+
+.vault-login-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(197, 198, 210, 0.45);
+}
+
+.vault-login-divider span {
+  position: relative;
+  padding: 0 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.vault-login-alt-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.vault-login-alt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(197, 198, 210, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.vault-login-alt-button:hover {
+  background: rgba(242, 244, 246, 0.55);
+}
+
+.vault-login-signup {
+  margin: 2rem 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.vault-login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #8793ad;
+  font-size: 0.9rem;
+}
+
+.vault-login-footer p,
+.vault-login-footer nav {
+  margin: 0;
+}
+
+.vault-login-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.vault-register-placeholder {
+  align-items: center;
+  justify-content: center;
+}
+
+.vault-register-placeholder-card {
+  width: min(44rem, 100%);
+  padding: 2rem;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+}
+
+.vault-register-placeholder-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.vault-register-placeholder-brand strong {
+  display: block;
+  font-family: "Manrope", sans-serif;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.vault-register-placeholder-brand small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+
+.vault-register-placeholder-copy {
+  margin-top: 2rem;
+}
+
+.vault-register-placeholder-copy h1 {
+  margin: 0.8rem 0 0;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+
+.vault-register-placeholder-copy p {
+  margin: 1rem 0 0;
+  max-width: 35rem;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.vault-register-placeholder-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 2rem;
+}
+
+.vault-register-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  min-height: calc(100vh - 8rem);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.vault-register-brand-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 2.2rem;
+  background: linear-gradient(160deg, #233978 0%, #516ab3 100%);
+  color: #fff;
+}
+
+.vault-register-brand-overlay,
+.vault-register-texture {
+  position: absolute;
+  inset: 0;
+}
+
+.vault-register-brand-overlay {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(0, 17, 58, 0.32), transparent 28%);
+}
+
+.vault-register-texture {
+  opacity: 0.24;
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.12) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.vault-register-brand-content,
+.vault-register-floating-card {
+  position: relative;
+  z-index: 1;
+}
+
+.vault-register-brand-content {
+  max-width: 29rem;
+  margin-top: 5rem;
+}
+
+.vault-register-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: "Manrope", sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.vault-register-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--accent);
+}
+
+.vault-register-brand-content h1 {
+  margin: 2rem 0 0;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(3.2rem, 6vw, 5.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.08em;
+}
+
+.vault-register-brand-content h1 span {
+  color: #4edea3;
+}
+
+.vault-register-brand-content p {
+  max-width: 26rem;
+  margin: 1.5rem 0 0;
+  color: rgba(212, 220, 245, 0.88);
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.vault-register-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.vault-register-metrics article {
+  padding: 1.35rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.vault-register-metrics article svg:first-child {
+  color: var(--success);
+}
+
+.vault-register-metrics article:nth-child(2) svg:first-child {
+  color: var(--accent);
+}
+
+.vault-register-metrics strong {
+  display: block;
+  margin-top: 0.85rem;
+  color: var(--accent);
+  font-family: "Manrope", sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.vault-register-metrics span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #515f74;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.vault-register-floating-card {
+  position: absolute;
+  right: 2rem;
+  bottom: 1.5rem;
+  width: 13.6rem;
+  height: 18rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  box-shadow: 0 28px 60px -28px rgba(0, 0, 0, 0.65);
+  transform: rotate(3deg);
+}
+
+.vault-register-floating-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) brightness(0.5) contrast(1.25);
+}
+
+.vault-register-floating-card div {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 1.2rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 17, 58, 0.86) 68%);
+}
+
+.vault-register-floating-card span {
+  display: block;
+  width: 3rem;
+  height: 0.18rem;
+  border-radius: 999px;
+  background: #4edea3;
+}
+
+.vault-register-floating-card p {
+  margin: 0.75rem 0 0;
+  color: #fff;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.vault-register-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2rem 1.5rem;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.vault-register-mobile-brand {
+  display: none;
+}
+
+.vault-register-form-wrap {
+  width: min(25.5rem, 100%);
+}
+
+.vault-register-header-block h2 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+
+.vault-register-header-block p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+}
+
+.vault-register-toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  padding: 0.3rem;
+  margin-top: 1.35rem;
+  border-radius: 10px;
+  background: rgba(242, 244, 246, 0.92);
+}
+
+.vault-register-toggle-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5rem;
+  min-height: 2.35rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.vault-register-toggle-link.is-active {
+  background: var(--soul-gradient);
+  color: #fff;
+  box-shadow: 0 12px 24px -16px rgba(0, 17, 58, 0.82);
+}
+
+.vault-register-form {
+  margin-top: 1.5rem;
+}
+
+.vault-register-section + .vault-register-section {
+  margin-top: 1.9rem;
+}
+
+.vault-register-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.vault-register-section-title span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.vault-register-section-title span.is-muted {
+  background: rgba(224, 227, 229, 0.9);
+  color: var(--accent);
+}
+
+.vault-register-section-title h3 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.vault-register-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.1rem;
+}
+
+.vault-register-grid-residency {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vault-register-field {
+  display: block;
+}
+
+.vault-register-field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.vault-register-field > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  padding-left: 0.1rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.vault-register-input-shell {
+  position: relative;
+  background: #e6e8ea;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vault-register-input {
+  width: 100%;
+  margin-top: 0;
+  padding: 0.9rem 0.95rem;
+  border: 0;
+  border-bottom: 2px solid #757682;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-strong);
+  font-weight: 500;
+}
+
+.vault-register-input.has-trailing {
+  padding-right: 2.5rem;
+}
+
+.vault-register-input:focus,
+.vault-register-select:focus {
+  border-bottom-color: #4edea3;
+  box-shadow: none;
+}
+
+.vault-register-input::placeholder {
+  color: #919bb1;
+}
+
+.vault-register-select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #5d6880 50%),
+    linear-gradient(135deg, #5d6880 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.1rem) calc(50% - 0.1rem),
+    calc(100% - 0.78rem) calc(50% - 0.1rem);
+  background-size: 0.42rem 0.42rem, 0.42rem 0.42rem;
+  background-repeat: no-repeat;
+}
+
+.vault-register-input-trailing {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+}
+
+.vault-register-visibility {
+  padding: 0;
+  background: transparent;
+  color: #6d7690;
+}
+
+.vault-register-visibility:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.vault-register-actions {
+  margin-top: 2rem;
+}
+
+.vault-register-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border-radius: 8px;
+  background: var(--soul-gradient);
+  color: #fff;
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  box-shadow: 0 18px 32px -20px rgba(0, 17, 58, 0.8);
+}
+
+.vault-register-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.vault-register-consent input {
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0.05rem 0 0;
+  accent-color: var(--accent);
+}
+
+.vault-register-consent a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.vault-register-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(197, 198, 210, 0.2);
+  color: rgba(93, 104, 128, 0.74);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.vault-register-footer p,
+.vault-register-footer nav {
+  margin: 0;
+}
+
+.vault-register-footer nav {
+  display: flex;
+  gap: 1rem;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -1680,6 +2577,26 @@ select:focus {
   .vault-nav-links {
     display: none;
   }
+
+  .vault-login-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-login-brand-panel,
+  .vault-register-brand-panel {
+    min-height: 22rem;
+  }
+
+  .vault-register-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-register-floating-card {
+    right: 1.5rem;
+    bottom: 1rem;
+    width: 11.5rem;
+    height: 15rem;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1723,6 +2640,21 @@ select:focus {
 
   .vault-hero-card {
     margin: -3rem auto 0;
+  }
+
+  .vault-login-footer,
+  .vault-register-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .vault-register-grid,
+  .vault-register-grid-residency {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-register-field.is-wide {
+    grid-column: auto;
   }
 }
 
@@ -1777,5 +2709,76 @@ select:focus {
 
   .vault-progress-item {
     flex-direction: row;
+  }
+
+  .vault-login-page,
+  .vault-register-page,
+  .vault-register-placeholder {
+    min-height: auto;
+  }
+
+  .vault-login-layout,
+  .vault-register-layout {
+    min-height: auto;
+    border-radius: 24px;
+  }
+
+  .vault-login-brand-panel,
+  .vault-register-brand-panel {
+    display: none;
+  }
+
+  .vault-login-form-panel,
+  .vault-register-form-panel {
+    padding: 1.4rem 1rem;
+  }
+
+  .vault-login-mobile-brand,
+  .vault-register-mobile-brand {
+    display: block;
+    margin-bottom: 1.5rem;
+  }
+
+  .vault-login-home-link {
+    font-family: "Manrope", sans-serif;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+  }
+
+  .vault-login-header h2 {
+    font-size: 1.9rem;
+  }
+
+  .vault-login-alt-actions,
+  .vault-register-placeholder-actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .vault-login-alt-button,
+  .vault-register-placeholder-actions > * {
+    width: 100%;
+  }
+
+  .vault-register-header-block h2 {
+    font-size: 1.9rem;
+  }
+
+  .vault-register-toggle {
+    width: 100%;
+  }
+
+  .vault-register-toggle-link {
+    flex: 1 1 0;
+  }
+
+  .vault-login-footer nav {
+    gap: 0.8rem 1rem;
+  }
+
+  .vault-register-footer nav {
+    gap: 0.8rem;
+    flex-wrap: wrap;
   }
 }

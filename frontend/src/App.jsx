@@ -3,13 +3,17 @@ import { AppShell } from "./components/layout/AppShell";
 import { ErrorBoundary } from "./components/feedback/ErrorBoundary";
 import { LoadingState } from "./components/feedback/LoadingState";
 import { useAuth } from "./context/AuthContext";
+import { useBrowserPath } from "./utils/router";
 
-const AuthPage = lazy(() => import("./pages/AuthPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const CustomerPage = lazy(() => import("./pages/CustomerPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 
 function WorkspaceSwitch() {
   const { authReady, authLoading, isAuthenticated, isAdmin } = useAuth();
+  const path = useBrowserPath();
 
   if (!authReady) {
     return (
@@ -23,7 +27,15 @@ function WorkspaceSwitch() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage />;
+    if (path === "/login") {
+      return <LoginPage />;
+    }
+
+    if (path === "/register") {
+      return <RegisterPage />;
+    }
+
+    return <LandingPage />;
   }
 
   if (isAdmin) {

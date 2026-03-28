@@ -1,18 +1,13 @@
-import { useRef, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
   Building2,
   ChevronRight,
   LineChart,
-  LockKeyhole,
   Send,
   ShieldCheck
 } from "lucide-react";
-import { VaultAuthTabs } from "../components/auth/VaultAuthTabs";
-import { VaultLoginPanel } from "../components/auth/VaultLoginPanel";
-import { VaultRegisterPanel } from "../components/auth/VaultRegisterPanel";
-import { VaultTrustPanel } from "../components/auth/VaultTrustPanel";
+import { RouteLink } from "../components/common/RouteLink";
 import {
   assuranceMetrics,
   featureCards,
@@ -21,7 +16,6 @@ import {
   navigationLinks,
   onboardingSteps
 } from "../constants/authLayout";
-import { useAuthForms } from "../hooks/useAuthForms";
 
 const featureIcons = {
   "secure-assets": ShieldCheck,
@@ -67,7 +61,7 @@ function FooterGroup({ group }) {
       <ul>
         {group.links.map((link) => (
           <li key={link}>
-            <a href="#auth-section">{link}</a>
+            <RouteLink to="/login">{link}</RouteLink>
           </li>
         ))}
       </ul>
@@ -75,26 +69,12 @@ function FooterGroup({ group }) {
   );
 }
 
-export default function AuthPage() {
-  const { authLoading, loginForm, registerForm, submitLogin, submitRegistration } = useAuthForms();
-  const [activeTab, setActiveTab] = useState("register");
-  const authSectionRef = useRef(null);
-  const featureSectionRef = useRef(null);
-
-  function scrollToElement(ref) {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function openAuth(mode) {
-    setActiveTab(mode);
-    scrollToElement(authSectionRef);
-  }
-
+export default function LandingPage() {
   return (
     <section className="vault-landing">
       <header className="vault-nav-shell">
         <nav className="vault-nav">
-          <a className="vault-brand" href="#top">
+          <RouteLink className="vault-brand" to="/">
             <span className="vault-brand-mark" aria-hidden="true">
               <Building2 size={18} strokeWidth={2.1} />
             </span>
@@ -102,7 +82,7 @@ export default function AuthPage() {
               <strong>Vault Financial</strong>
               <small>Digital Vault Banking</small>
             </span>
-          </a>
+          </RouteLink>
 
           <div className="vault-nav-links">
             {navigationLinks.map((item) => (
@@ -113,12 +93,12 @@ export default function AuthPage() {
           </div>
 
           <div className="vault-nav-actions">
-            <button type="button" className="vault-ghost-button" onClick={() => openAuth("login")}>
+            <RouteLink to="/login" className="vault-ghost-button">
               Login
-            </button>
-            <button type="button" className="vault-primary-button" onClick={() => openAuth("register")}>
+            </RouteLink>
+            <RouteLink to="/register" className="vault-primary-button">
               Open Account
-            </button>
+            </RouteLink>
           </div>
         </nav>
       </header>
@@ -135,16 +115,12 @@ export default function AuthPage() {
             precision-grade workflows.
           </p>
           <div className="vault-hero-actions">
-            <button type="button" className="vault-primary-button" onClick={() => openAuth("register")}>
+            <RouteLink to="/register" className="vault-primary-button">
               Get Started
-            </button>
-            <button
-              type="button"
-              className="vault-secondary-button"
-              onClick={() => scrollToElement(featureSectionRef)}
-            >
+            </RouteLink>
+            <a href="#features" className="vault-secondary-button">
               View Platform
-            </button>
+            </a>
           </div>
           <div className="vault-stat-row">
             {heroStats.map((stat) => (
@@ -186,16 +162,16 @@ export default function AuthPage() {
               <span className="vault-block-label">Verified access</span>
               <strong>Ready for secure onboarding</strong>
               <p>Customer and operator sessions are routed through one validated entry surface.</p>
-              <button type="button" className="vault-inline-link" onClick={() => openAuth("login")}>
+              <RouteLink to="/login" className="vault-inline-link">
                 Enter secure workspace
                 <ChevronRight size={16} strokeWidth={2} />
-              </button>
+              </RouteLink>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="features" ref={featureSectionRef} className="vault-section vault-section-muted">
+      <section id="features" className="vault-section vault-section-muted">
         <div className="vault-section-header">
           <span className="vault-block-label">Engineered for Excellence</span>
           <h2>Institutional calm, without transactional drag.</h2>
@@ -220,7 +196,10 @@ export default function AuthPage() {
 
         <div className="vault-steps-grid">
           {onboardingSteps.map((step, index) => (
-            <article key={step.id} className={`vault-step-card ${index === onboardingSteps.length - 1 ? "is-active" : ""}`.trim()}>
+            <article
+              key={step.id}
+              className={`vault-step-card ${index === onboardingSteps.length - 1 ? "is-active" : ""}`.trim()}
+            >
               <div className="vault-step-marker">{step.step}</div>
               <h3>{step.title}</h3>
               <p>{step.description}</p>
@@ -234,45 +213,9 @@ export default function AuthPage() {
             <h3>Join customers who prefer verified banking over disposable dashboards.</h3>
             <p>Move from account creation to operational workspace through one controlled flow.</p>
           </div>
-          <button type="button" className="vault-primary-button" onClick={() => openAuth("register")}>
+          <RouteLink to="/register" className="vault-primary-button">
             Start your onboarding
-          </button>
-        </div>
-      </section>
-
-      <section id="auth-section" ref={authSectionRef} className="vault-section">
-        <div className="vault-section-header">
-          <span className="vault-block-label">Secure access</span>
-          <h2>Choose your entry mode.</h2>
-          <p>
-            Open a new vault through a guided onboarding wizard or return through the same trusted
-            entry surface.
-          </p>
-        </div>
-
-        <div className="vault-auth-layout">
-          <div className="vault-auth-card">
-            <div className="vault-auth-card-header">
-              <VaultAuthTabs activeTab={activeTab} onChange={setActiveTab} />
-              <span className="vault-mini-note">
-                {activeTab === "register"
-                  ? "Three-step onboarding"
-                  : "Instant secure sign in"}
-              </span>
-            </div>
-
-            {activeTab === "register" ? (
-              <VaultRegisterPanel
-                form={registerForm}
-                isLoading={authLoading}
-                onSubmit={submitRegistration}
-              />
-            ) : (
-              <VaultLoginPanel form={loginForm} isLoading={authLoading} onSubmit={submitLogin} />
-            )}
-          </div>
-
-          <VaultTrustPanel />
+          </RouteLink>
         </div>
       </section>
 
@@ -281,10 +224,10 @@ export default function AuthPage() {
           <span className="vault-block-label">Institutional design system</span>
           <h2>Built to feel secure before the first transaction even happens.</h2>
         </div>
-        <button type="button" className="vault-primary-button" onClick={() => openAuth("register")}>
-          Initialize Your Vault
+        <RouteLink to="/login" className="vault-primary-button">
+          Login to Vault
           <ArrowRight size={16} strokeWidth={2} />
-        </button>
+        </RouteLink>
       </section>
 
       <footer className="vault-footer">
@@ -305,9 +248,9 @@ export default function AuthPage() {
         <div className="vault-footer-meta">
           <p>(c) 2026 Vault Financial Inc. All rights reserved.</p>
           <div>
-            <a href="#auth-section">Privacy Policy</a>
-            <a href="#auth-section">Terms of Service</a>
-            <a href="#auth-section">Cookie Settings</a>
+            <RouteLink to="/login">Privacy Policy</RouteLink>
+            <RouteLink to="/login">Terms of Service</RouteLink>
+            <RouteLink to="/login">Cookie Settings</RouteLink>
           </div>
         </div>
       </footer>

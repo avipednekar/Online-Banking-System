@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "beneficiaries",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"owner_id", "accountNumber"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"owner_id", "account_number"})
 )
 public class Beneficiary {
 
@@ -30,10 +30,11 @@ public class Beneficiary {
     @Column(nullable = false)
     private String nickname;
 
-    @Column(nullable = false)
-    private String bankName;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "bank_id")
+    private Bank bank;
 
-    @Column(nullable = false)
+    @Column(name = "account_number", nullable = false)
     private String accountNumber;
 
     @Column(nullable = false)
@@ -45,10 +46,10 @@ public class Beneficiary {
     public Beneficiary() {
     }
 
-    public Beneficiary(BankUser owner, String nickname, String bankName, String accountNumber) {
+    public Beneficiary(BankUser owner, String nickname, Bank bank, String accountNumber) {
         this.owner = owner;
         this.nickname = nickname;
-        this.bankName = bankName;
+        this.bank = bank;
         this.accountNumber = accountNumber;
         this.active = true;
         this.createdAt = LocalDateTime.now();
@@ -67,7 +68,11 @@ public class Beneficiary {
     }
 
     public String getBankName() {
-        return bankName;
+        return bank.getBankName();
+    }
+
+    public Bank getBank() {
+        return bank;
     }
 
     public String getAccountNumber() {

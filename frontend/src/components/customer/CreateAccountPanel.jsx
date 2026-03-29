@@ -35,7 +35,7 @@ export function CreateAccountPanel({ form, isLoading, onSubmit }) {
           disabled={isLoading}
         />
       </form>
-      <p className="muted">Account numbers are generated automatically on creation.</p>
+      <p className="muted">Account numbers are generated automatically as 10 digits: savings start with 9 and current accounts start with 8.</p>
     </Panel>
   );
 }

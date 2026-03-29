@@ -8,6 +8,8 @@ import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.exception.BusinessException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.AccountType;
+import com.onlinebanking.repository.BankRepository;
+import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.service.AuthService;
 import com.onlinebanking.service.BankingService;
 import com.onlinebanking.service.BeneficiaryService;
@@ -20,7 +22,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -34,6 +38,12 @@ class BankingServiceIntegrationTest {
 
     @Autowired
     private BeneficiaryService beneficiaryService;
+
+    @Autowired
+    private CustomerProfileRepository customerProfileRepository;
+
+    @Autowired
+    private BankRepository bankRepository;
 
     @Test
     void depositIncreasesBalance() {
@@ -101,16 +111,61 @@ class BankingServiceIntegrationTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> beneficiaryService.createBeneficiary("jatin",
-                        new BeneficiaryRequest("Ghost", "Internal Bank", "SAV-99999999")));
+                        new BeneficiaryRequest("Ghost", "Internal Bank", "9123499999")));
+    }
+
+    @Test
+    void registrationStoresAddressInSeparateRelation() {
+        authService.register(registerRequest("kavya", "kavya@example.com"));
+
+        var profile = customerProfileRepository.findByUserUsernameIgnoreCase("kavya").orElseThrow();
+
+        assertNotNull(profile.getAddress());
+        assertNotNull(profile.getAddress().getId());
+        assertEquals("123 Main Street", profile.getAddress().getAddressLine1());
+        assertEquals("Mumbai", profile.getAddress().getCity());
+    }
+
+    @Test
+    void beneficiariesReuseCanonicalBankRelation() {
+        authService.register(registerRequest("lina", "lina@example.com"));
+        authService.register(registerRequest("mohan", "mohan@example.com"));
+        authService.register(registerRequest("nita", "nita@example.com"));
+
+        String firstAccount = bankingService.createAccount("mohan",
+                new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("900.00"))).accountNumber();
+        String secondAccount = bankingService.createAccount("nita",
+                new CreateAccountRequest(AccountType.CURRENT, new BigDecimal("950.00"))).accountNumber();
+
+        beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Mohan", "Internal Bank", firstAccount));
+        beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Nita", "Internal Bank", secondAccount));
+
+        assertEquals(1L, bankRepository.count());
     }
 
     @Test
     void generatedAccountNumberUsesExpectedPattern() {
         authService.register(registerRequest("geeta", "geeta@example.com"));
 
-        String accountNumber = bankingService.createAccount("geeta", new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("1000.00"))).accountNumber();
+        String firstSavingsAccount = bankingService.createAccount("geeta",
+                new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("1000.00"))).accountNumber();
+        String secondSavingsAccount = bankingService.createAccount("geeta",
+                new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("1200.00"))).accountNumber();
+        String firstCurrentAccount = bankingService.createAccount("geeta",
+                new CreateAccountRequest(AccountType.CURRENT, new BigDecimal("1500.00"))).accountNumber();
+        String secondCurrentAccount = bankingService.createAccount("geeta",
+                new CreateAccountRequest(AccountType.CURRENT, new BigDecimal("1700.00"))).accountNumber();
 
-        assertEquals(true, accountNumber.startsWith("SAV-"));
+        assertTrue(firstSavingsAccount.matches("9\\d{9}"));
+        assertTrue(secondSavingsAccount.matches("9\\d{9}"));
+        assertTrue(firstCurrentAccount.matches("8\\d{9}"));
+        assertTrue(secondCurrentAccount.matches("8\\d{9}"));
+        assertEquals(extractSequence(firstSavingsAccount) + 1, extractSequence(secondSavingsAccount));
+        assertEquals(extractSequence(firstCurrentAccount) + 1, extractSequence(secondCurrentAccount));
+    }
+
+    private long extractSequence(String accountNumber) {
+        return Long.parseLong(accountNumber.substring(accountNumber.length() - 5));
     }
 
     private RegisterRequest registerRequest(String username, String email) {

@@ -7,6 +7,7 @@ import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.exception.BusinessException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.Account;
+import com.onlinebanking.model.AccountNumberSequence;
 import com.onlinebanking.model.AccountStatus;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.LedgerEntry;
@@ -15,6 +16,7 @@ import com.onlinebanking.model.Transaction;
 import com.onlinebanking.model.TransactionChannel;
 import com.onlinebanking.model.TransactionStatus;
 import com.onlinebanking.model.TransactionType;
+import com.onlinebanking.repository.AccountNumberSequenceRepository;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.UUID;
 import java.util.List;
 
@@ -35,6 +38,7 @@ public class BankingService {
     private static final BigDecimal MIN_BALANCE = new BigDecimal("100.00");
     private static final Logger log = LoggerFactory.getLogger(BankingService.class);
 
+    private final AccountNumberSequenceRepository accountNumberSequenceRepository;
     private final AccountRepository accountRepository;
     private final BankUserRepository bankUserRepository;
     private final TransactionRepository transactionRepository;
@@ -42,12 +46,14 @@ public class BankingService {
     private final BeneficiaryService beneficiaryService;
     private final AuditService auditService;
 
-    public BankingService(AccountRepository accountRepository,
+    public BankingService(AccountNumberSequenceRepository accountNumberSequenceRepository,
+                          AccountRepository accountRepository,
                           BankUserRepository bankUserRepository,
                           TransactionRepository transactionRepository,
                           LedgerEntryRepository ledgerEntryRepository,
                           BeneficiaryService beneficiaryService,
                           AuditService auditService) {
+        this.accountNumberSequenceRepository = accountNumberSequenceRepository;
         this.accountRepository = accountRepository;
         this.bankUserRepository = bankUserRepository;
         this.transactionRepository = transactionRepository;
@@ -291,19 +297,23 @@ public class BankingService {
         return accountNumber + "-" + sequence + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    private String generateAccountNumber(com.onlinebanking.model.AccountType accountType) {
-        String prefix = switch (accountType) {
-            case SAVINGS -> "SAV";
-            case CURRENT -> "CUR";
-        };
+    private synchronized String generateAccountNumber(com.onlinebanking.model.AccountType accountType) {
+        AccountNumberSequence accountNumberSequence = accountNumberSequenceRepository.findById(accountType)
+                .orElseGet(() -> new AccountNumberSequence(accountType));
 
-        long sequence = accountRepository.countByAccountType(accountType) + 1;
-        String generated = prefix + "-" + String.format("%08d", sequence);
-        while (accountRepository.existsByAccountNumber(generated)) {
-            sequence++;
-            generated = prefix + "-" + String.format("%08d", sequence);
+        long nextSequence = accountNumberSequence.nextValue();
+        if (nextSequence > 99_999) {
+            throw new BusinessException("Account number sequence limit reached for " + accountType.name());
         }
-        return generated;
+
+        accountNumberSequenceRepository.save(accountNumberSequence);
+
+        String leadingDigit = switch (accountType) {
+            case SAVINGS -> "9";
+            case CURRENT -> "8";
+        };
+        String randomDigits = String.format("%04d", ThreadLocalRandom.current().nextInt(10_000));
+        return leadingDigit + randomDigits + String.format("%05d", nextSequence);
     }
 
     private AccountResponse toAccountResponse(Account account) {

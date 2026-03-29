@@ -1,6 +1,7 @@
 package com.onlinebanking.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -39,22 +40,9 @@ public class CustomerProfile {
     @Column(nullable = false)
     private String occupation;
 
-    @Column(nullable = false)
-    private String addressLine1;
-
-    private String addressLine2;
-
-    @Column(nullable = false)
-    private String city;
-
-    @Column(nullable = false)
-    private String state;
-
-    @Column(nullable = false)
-    private String postalCode;
-
-    @Column(nullable = false)
-    private String country;
+    @OneToOne(optional = false, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "address_id", unique = true)
+    private CustomerAddress address;
 
     @Column(nullable = false)
     private LocalDate dateOfBirth;
@@ -89,12 +77,7 @@ public class CustomerProfile {
         this.phoneNumber = phoneNumber;
         this.gender = gender;
         this.occupation = occupation;
-        this.addressLine1 = addressLine1;
-        this.addressLine2 = addressLine2;
-        this.city = city;
-        this.state = state;
-        this.postalCode = postalCode;
-        this.country = country;
+        this.address = new CustomerAddress(addressLine1, addressLine2, city, state, postalCode, country);
         this.dateOfBirth = dateOfBirth;
         this.kycStatus = KycStatus.PENDING;
         this.createdAt = LocalDateTime.now();
@@ -146,56 +129,56 @@ public class CustomerProfile {
     }
 
     public String getAddressLine1() {
-        return addressLine1;
+        return address.getAddressLine1();
     }
 
     public void setAddressLine1(String addressLine1) {
-        this.addressLine1 = addressLine1;
+        this.address.setAddressLine1(addressLine1);
         this.updatedAt = LocalDateTime.now();
     }
 
     public String getAddressLine2() {
-        return addressLine2;
+        return address.getAddressLine2();
     }
 
     public void setAddressLine2(String addressLine2) {
-        this.addressLine2 = addressLine2;
+        this.address.setAddressLine2(addressLine2);
         this.updatedAt = LocalDateTime.now();
     }
 
     public String getCity() {
-        return city;
+        return address.getCity();
     }
 
     public void setCity(String city) {
-        this.city = city;
+        this.address.setCity(city);
         this.updatedAt = LocalDateTime.now();
     }
 
     public String getState() {
-        return state;
+        return address.getState();
     }
 
     public void setState(String state) {
-        this.state = state;
+        this.address.setState(state);
         this.updatedAt = LocalDateTime.now();
     }
 
     public String getPostalCode() {
-        return postalCode;
+        return address.getPostalCode();
     }
 
     public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
+        this.address.setPostalCode(postalCode);
         this.updatedAt = LocalDateTime.now();
     }
 
     public String getCountry() {
-        return country;
+        return address.getCountry();
     }
 
     public void setCountry(String country) {
-        this.country = country;
+        this.address.setCountry(country);
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -215,5 +198,9 @@ public class CustomerProfile {
     public void setKycStatus(KycStatus kycStatus) {
         this.kycStatus = kycStatus;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public CustomerAddress getAddress() {
+        return address;
     }
 }

@@ -136,8 +136,8 @@ Authorization: Bearer <token>
 The backend generates account numbers automatically in a fixed pattern such as:
 
 ```text
-SAV-00000001
-CUR-00000001
+9123400001
+8456700001
 ```
 
 Transfer funds:
@@ -146,8 +146,8 @@ Transfer funds:
 POST /api/accounts/transfer
 Authorization: Bearer <token>
 {
-  "fromAccountNumber": "SAV-00000001",
-  "toAccountNumber": "CUR-00000001",
+  "fromAccountNumber": "9123400001",
+  "toAccountNumber": "8456700001",
   "amount": 250.00
 }
 ```
@@ -159,6 +159,11 @@ Backend tests:
 ```bash
 mvn test
 ```
+
+## Reset behavior
+
+- The application is currently configured with `app.reset-user-data-on-startup=true` in [src/main/resources/application.properties](D:\Online Banking System\src\main\resources\application.properties), so customer users, accounts, beneficiaries, transactions, ledger entries, banks, and audit logs are wiped on startup while the admin user is preserved.
+- After the clean restart you can set that flag to `false` if you no longer want every application start to clear the data.
 
 Frontend production build:
 
@@ -190,13 +195,20 @@ If a browser calls an API directly, some network path will always be visible in 
 ## Domain improvements
 
 - Customer profiles with KYC status
+- Customer profile addresses normalized into a separate `customer_addresses` relation to keep customer attributes in 3NF
 - Customer onboarding with name, address, gender, occupation, phone number, and date of birth
 - Account status and currency code
 - Backend-generated account numbers with a standard pattern
-- Beneficiary registry per customer
+- Beneficiary registry per customer with bank names normalized into a canonical `banks` relation
 - Transaction status, channel, and counterparty tracking
 - Ledger entries for debit and credit history
 - Audit logging for sensitive operations
+
+## Data normalization
+
+- `bank_users`, `customer_profiles`, `customer_addresses`, `accounts`, `transactions`, and `ledger_entries` are modeled in 3NF so non-key facts depend on the key for each relation.
+- `banks` is treated as a BCNF-style reference relation with a canonical unique bank name reused by beneficiaries instead of storing repeated free-text bank names.
+- Startup schema reconciliation backfills `customer_addresses` and `banks` from legacy inline columns so existing deployments can migrate without manual data repair.
 
 ## Additional security you should add next
 

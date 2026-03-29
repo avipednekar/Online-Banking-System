@@ -2,11 +2,15 @@ package com.onlinebanking.service;
 
 import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
+import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.exception.ResourceNotFoundException;
+import com.onlinebanking.model.AccountOpeningRequest;
+import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.model.KycStatus;
+import com.onlinebanking.repository.AccountOpeningRequestRepository;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
@@ -25,19 +29,25 @@ public class AdminService {
 
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
+    private final AccountOpeningRequestRepository accountOpeningRequestRepository;
     private final AccountRepository accountRepository;
     private final BeneficiaryRepository beneficiaryRepository;
+    private final BankingService bankingService;
     private final AuditService auditService;
 
     public AdminService(BankUserRepository bankUserRepository,
                         CustomerProfileRepository customerProfileRepository,
+                        AccountOpeningRequestRepository accountOpeningRequestRepository,
                         AccountRepository accountRepository,
                         BeneficiaryRepository beneficiaryRepository,
+                        BankingService bankingService,
                         AuditService auditService) {
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
+        this.accountOpeningRequestRepository = accountOpeningRequestRepository;
         this.accountRepository = accountRepository;
         this.beneficiaryRepository = beneficiaryRepository;
+        this.bankingService = bankingService;
         this.auditService = auditService;
     }
 
@@ -47,6 +57,7 @@ public class AdminService {
                 customerProfileRepository.countByKycStatus(KycStatus.PENDING),
                 customerProfileRepository.countByKycStatus(KycStatus.VERIFIED),
                 customerProfileRepository.countByKycStatus(KycStatus.REJECTED),
+                accountOpeningRequestRepository.countByStatus(AccountOpeningRequestStatus.PENDING),
                 accountRepository.count(),
                 beneficiaryRepository.countByActiveTrue()
         );
@@ -55,6 +66,12 @@ public class AdminService {
     public List<AdminCustomerResponse> getCustomers() {
         return customerProfileRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toCustomerResponse)
+                .toList();
+    }
+
+    public List<AccountOpeningRequestResponse> getPendingAccountRequests() {
+        return accountOpeningRequestRepository.findByStatusOrderByCreatedAtAsc(AccountOpeningRequestStatus.PENDING).stream()
+                .map(bankingService::toAccountOpeningRequestResponse)
                 .toList();
     }
 
@@ -76,6 +93,16 @@ public class AdminService {
         );
         log.info("Admin {} set KYC status {} for user {}", adminUsername, request.kycStatus(), user.getUsername());
         return toCustomerResponse(savedProfile);
+    }
+
+    @Transactional
+    public AccountOpeningRequestResponse approveAccountRequest(String adminUsername, Long requestId) {
+        BankUser admin = bankUserRepository.findByUsernameIgnoreCase(adminUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found"));
+        AccountOpeningRequest accountOpeningRequest = accountOpeningRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account opening request not found"));
+
+        return bankingService.approveAccountOpeningRequest(admin, accountOpeningRequest);
     }
 
     private AdminCustomerResponse toCustomerResponse(CustomerProfile profile) {

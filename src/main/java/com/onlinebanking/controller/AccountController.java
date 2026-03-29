@@ -1,5 +1,6 @@
 package com.onlinebanking.controller;
 
+import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.AmountRequest;
 import com.onlinebanking.dto.ApiResponse;
@@ -31,11 +32,19 @@ public class AccountController {
     }
 
     @PostMapping("/accounts")
-    public ResponseEntity<ApiResponse<AccountResponse>> createAccount(Authentication authentication,
-                                                                     @Valid @RequestBody CreateAccountRequest request) {
-        AccountResponse response = bankingService.createAccount(authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Account created successfully", response));
+    public ResponseEntity<ApiResponse<AccountOpeningRequestResponse>> createAccount(Authentication authentication,
+                                                                                   @Valid @RequestBody CreateAccountRequest request) {
+        AccountOpeningRequestResponse response = bankingService.submitAccountOpeningRequest(authentication.getName(), request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("Account opening request submitted successfully", response));
+    }
+
+    @GetMapping("/accounts/requests")
+    public ResponseEntity<ApiResponse<List<AccountOpeningRequestResponse>>> getAccountRequests(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Account opening requests fetched successfully",
+                bankingService.getAccountOpeningRequestsForUser(authentication.getName())
+        ));
     }
 
     @GetMapping("/accounts")

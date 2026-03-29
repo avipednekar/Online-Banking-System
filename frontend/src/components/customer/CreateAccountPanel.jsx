@@ -6,7 +6,7 @@ import { Panel } from "../ui/Panel";
 export function CreateAccountPanel({ form, isLoading, onSubmit }) {
   return (
     <Panel>
-      <h2>Create account</h2>
+      <h2>Request new account</h2>
       <form className="form-grid compact-grid" onSubmit={onSubmit}>
         <FormField
           label="Account type"
@@ -30,12 +30,12 @@ export function CreateAccountPanel({ form, isLoading, onSubmit }) {
         />
         <SubmitButton
           isLoading={isLoading}
-          idleLabel="Open account"
-          loadingLabel="Opening account..."
+          idleLabel="Submit request"
+          loadingLabel="Submitting request..."
           disabled={isLoading}
         />
       </form>
-      <p className="muted">Account numbers are generated automatically as 10 digits: savings start with 9 and current accounts start with 8.</p>
+      <p className="muted">Only KYC-verified customers can submit account opening requests. Admin approval generates the account number and opens the account.</p>
     </Panel>
   );
 }

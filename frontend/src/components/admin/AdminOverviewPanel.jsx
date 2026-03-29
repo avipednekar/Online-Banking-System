@@ -52,6 +52,11 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
           <p>Profiles blocked pending remediation.</p>
         </article>
         <article className="profile-card">
+          <span>Pending account requests</span>
+          <strong>{overview?.pendingAccountRequests ?? 0}</strong>
+          <p>Customer account requests awaiting admin approval.</p>
+        </article>
+        <article className="profile-card">
           <span>Total accounts</span>
           <strong>{overview?.totalAccounts ?? 0}</strong>
           <p>Bank accounts under platform management.</p>

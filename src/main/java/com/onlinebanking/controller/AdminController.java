@@ -2,6 +2,7 @@ package com.onlinebanking.controller;
 
 import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
+import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.ApiResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.service.AdminService;
@@ -37,6 +38,14 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("Customers fetched successfully", adminService.getCustomers()));
     }
 
+    @GetMapping("/account-requests")
+    public ResponseEntity<ApiResponse<List<AccountOpeningRequestResponse>>> getPendingAccountRequests() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Pending account opening requests fetched successfully",
+                adminService.getPendingAccountRequests()
+        ));
+    }
+
     @PatchMapping("/customers/{userId}/kyc")
     public ResponseEntity<ApiResponse<AdminCustomerResponse>> updateKycStatus(Authentication authentication,
                                                                              @PathVariable Long userId,
@@ -44,6 +53,15 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(
                 "KYC status updated successfully",
                 adminService.updateKycStatus(authentication.getName(), userId, request)
+        ));
+    }
+
+    @PatchMapping("/account-requests/{requestId}/approve")
+    public ResponseEntity<ApiResponse<AccountOpeningRequestResponse>> approveAccountRequest(Authentication authentication,
+                                                                                           @PathVariable Long requestId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Account opening request approved successfully",
+                adminService.approveAccountRequest(authentication.getName(), requestId)
         ));
     }
 }

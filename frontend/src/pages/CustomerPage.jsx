@@ -1,6 +1,7 @@
 import { StatCard } from "../components/ui/StatCard";
 import { ProfileOverview } from "../components/customer/ProfileOverview";
 import { CreateAccountPanel } from "../components/customer/CreateAccountPanel";
+import { AccountRequestsPanel } from "../components/customer/AccountRequestsPanel";
 import { AccountsPanel } from "../components/customer/AccountsPanel";
 import { BalanceActionsPanel } from "../components/customer/BalanceActionsPanel";
 import { TransferPanel } from "../components/customer/TransferPanel";
@@ -30,6 +31,11 @@ export default function CustomerPage() {
           detail="Managed through protected customer APIs."
         />
         <StatCard
+          label="Pending requests"
+          value={workspace.accountRequests.filter((request) => request.status === "PENDING").length}
+          detail="Awaiting central approval before account creation."
+        />
+        <StatCard
           label="Total balance"
           value={`Rs ${workspace.totalBalance.toFixed(2)}`}
           detail="Combined live value across your accounts."
@@ -43,6 +49,12 @@ export default function CustomerPage() {
           form={workspace.accountForm}
           isLoading={workspace.tracker.isPending("createAccount")}
           onSubmit={workspace.createAccount}
+        />
+        <AccountRequestsPanel
+          requests={workspace.accountRequests}
+          isLoading={workspace.tracker.isPending("accountRequests")}
+          error={workspace.accountRequestsError}
+          onRefresh={workspace.loadAccountRequests}
         />
         <AccountsPanel
           accounts={workspace.accounts}

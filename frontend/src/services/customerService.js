@@ -4,6 +4,9 @@ export const customerService = {
   getAccounts(token) {
     return apiRequest("/accounts", { token });
   },
+  getAccountRequests(token) {
+    return apiRequest("/accounts/requests", { token });
+  },
   createAccount(token, payload) {
     return apiRequest("/accounts", {
       method: "POST",

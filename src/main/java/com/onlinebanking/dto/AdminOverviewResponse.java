@@ -5,6 +5,7 @@ public record AdminOverviewResponse(
         long pendingKyc,
         long verifiedKyc,
         long rejectedKyc,
+        long pendingAccountRequests,
         long totalAccounts,
         long activeBeneficiaries
 ) {

@@ -11,9 +11,11 @@ export function useAdminWorkspace() {
   const tracker = useAsyncTracker();
   const [overview, setOverview] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [accountRequests, setAccountRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [overviewError, setOverviewError] = useState("");
   const [customersError, setCustomersError] = useState("");
+  const [requestsError, setRequestsError] = useState("");
   const deferredSearch = useDeferredValue(searchTerm);
 
   const filteredCustomers = useMemo(() => {
@@ -76,9 +78,25 @@ export function useAdminWorkspace() {
     }
   }
 
+  async function loadAccountRequests() {
+    tracker.startAction("accountRequests");
+    setRequestsError("");
+    try {
+      const data = await adminService.getAccountRequests(token);
+      setAccountRequests(data);
+    } catch (error) {
+      if (!handleSessionError(error, "Unable to load account request queue")) {
+        setRequestsError(error.message || "Unable to load account request queue.");
+      }
+    } finally {
+      tracker.finishAction("accountRequests");
+    }
+  }
+
   useEffect(() => {
     loadOverview();
     loadCustomers();
+    loadAccountRequests();
   }, []);
 
   function logoutUser() {
@@ -94,6 +112,7 @@ export function useAdminWorkspace() {
         current.map((customer) => (customer.userId === updated.userId ? updated : customer))
       );
       await loadOverview();
+      await loadAccountRequests();
       notifySuccess("KYC updated", `Customer ${updated.username} marked as ${updated.kycStatus}.`);
     } catch (error) {
       handleSessionError(error, "KYC update failed");
@@ -102,19 +121,38 @@ export function useAdminWorkspace() {
     }
   }
 
+  async function approveAccountRequest(requestId) {
+    tracker.startAction("approveAccountRequest");
+    try {
+      const approved = await adminService.approveAccountRequest(token, requestId);
+      setAccountRequests((current) => current.filter((request) => request.id !== approved.id));
+      await loadOverview();
+      await loadCustomers();
+      notifySuccess("Account approved", `Account ${approved.approvedAccountNumber} opened for ${approved.requesterUsername}.`);
+    } catch (error) {
+      handleSessionError(error, "Account approval failed");
+    } finally {
+      tracker.finishAction("approveAccountRequest");
+    }
+  }
+
   return {
     user,
     overview,
     customers,
+    accountRequests,
     filteredCustomers,
     searchTerm,
     setSearchTerm,
     overviewError,
     customersError,
+    requestsError,
     tracker,
     logoutUser,
     loadOverview,
     loadCustomers,
-    updateKyc
+    loadAccountRequests,
+    updateKyc,
+    approveAccountRequest
   };
 }

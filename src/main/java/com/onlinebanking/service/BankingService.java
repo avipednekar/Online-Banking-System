@@ -1,6 +1,7 @@
 package com.onlinebanking.service;
 
 import com.onlinebanking.dto.AccountResponse;
+import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.CreateAccountRequest;
 import com.onlinebanking.dto.TransactionResponse;
 import com.onlinebanking.dto.TransferRequest;
@@ -8,6 +9,8 @@ import com.onlinebanking.exception.BusinessException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.Account;
 import com.onlinebanking.model.AccountNumberSequence;
+import com.onlinebanking.model.AccountOpeningRequest;
+import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.AccountStatus;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.LedgerEntry;
@@ -16,9 +19,13 @@ import com.onlinebanking.model.Transaction;
 import com.onlinebanking.model.TransactionChannel;
 import com.onlinebanking.model.TransactionStatus;
 import com.onlinebanking.model.TransactionType;
+import com.onlinebanking.model.CustomerProfile;
+import com.onlinebanking.model.KycStatus;
+import com.onlinebanking.repository.AccountOpeningRequestRepository;
 import com.onlinebanking.repository.AccountNumberSequenceRepository;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
+import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
 import com.onlinebanking.repository.TransactionRepository;
 import jakarta.transaction.Transactional;
@@ -38,24 +45,30 @@ public class BankingService {
     private static final BigDecimal MIN_BALANCE = new BigDecimal("100.00");
     private static final Logger log = LoggerFactory.getLogger(BankingService.class);
 
+    private final AccountOpeningRequestRepository accountOpeningRequestRepository;
     private final AccountNumberSequenceRepository accountNumberSequenceRepository;
     private final AccountRepository accountRepository;
     private final BankUserRepository bankUserRepository;
+    private final CustomerProfileRepository customerProfileRepository;
     private final TransactionRepository transactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final BeneficiaryService beneficiaryService;
     private final AuditService auditService;
 
-    public BankingService(AccountNumberSequenceRepository accountNumberSequenceRepository,
+    public BankingService(AccountOpeningRequestRepository accountOpeningRequestRepository,
+                          AccountNumberSequenceRepository accountNumberSequenceRepository,
                           AccountRepository accountRepository,
                           BankUserRepository bankUserRepository,
+                          CustomerProfileRepository customerProfileRepository,
                           TransactionRepository transactionRepository,
                           LedgerEntryRepository ledgerEntryRepository,
                           BeneficiaryService beneficiaryService,
                           AuditService auditService) {
+        this.accountOpeningRequestRepository = accountOpeningRequestRepository;
         this.accountNumberSequenceRepository = accountNumberSequenceRepository;
         this.accountRepository = accountRepository;
         this.bankUserRepository = bankUserRepository;
+        this.customerProfileRepository = customerProfileRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.beneficiaryService = beneficiaryService;
@@ -63,37 +76,57 @@ public class BankingService {
     }
 
     @Transactional
-    public AccountResponse createAccount(String username, CreateAccountRequest request) {
+    public AccountOpeningRequestResponse submitAccountOpeningRequest(String username, CreateAccountRequest request) {
         BankUser owner = getAuthenticatedUser(username);
+        CustomerProfile profile = getCustomerProfile(owner.getId());
+        if (profile.getKycStatus() != KycStatus.VERIFIED) {
+            throw new BusinessException("KYC must be verified before submitting an account opening request");
+        }
 
         BigDecimal openingBalance = normalize(request.openingBalance());
         if (openingBalance.compareTo(MIN_BALANCE) < 0) {
             throw new BusinessException("Opening balance must be at least " + MIN_BALANCE);
         }
 
-        String generatedAccountNumber = generateAccountNumber(request.accountType());
-        Account account = new Account(
-                generatedAccountNumber,
-                request.accountType(),
-                openingBalance,
-                owner
+        AccountOpeningRequest savedRequest = accountOpeningRequestRepository.save(
+                new AccountOpeningRequest(owner, request.accountType(), openingBalance)
+        );
+        auditService.log(username, "ACCOUNT_OPENING_REQUEST_SUBMITTED", "AccountOpeningRequest", String.valueOf(savedRequest.getId()),
+                "Requested " + request.accountType() + " account with opening balance " + openingBalance);
+        log.info("Account opening request {} submitted by user {}", savedRequest.getId(), username);
+        return toAccountOpeningRequestResponse(savedRequest);
+    }
+
+    public List<AccountOpeningRequestResponse> getAccountOpeningRequestsForUser(String username) {
+        getAuthenticatedUser(username);
+        return accountOpeningRequestRepository.findByRequesterUsernameIgnoreCaseOrderByCreatedAtDesc(username).stream()
+                .map(this::toAccountOpeningRequestResponse)
+                .toList();
+    }
+
+    @Transactional
+    public AccountOpeningRequestResponse approveAccountOpeningRequest(BankUser admin, AccountOpeningRequest accountOpeningRequest) {
+        if (accountOpeningRequest.getStatus() != AccountOpeningRequestStatus.PENDING) {
+            throw new BusinessException("Only pending account opening requests can be approved");
+        }
+
+        CustomerProfile profile = getCustomerProfile(accountOpeningRequest.getRequester().getId());
+        if (profile.getKycStatus() != KycStatus.VERIFIED) {
+            throw new BusinessException("Customer KYC must be verified before account approval");
+        }
+
+        Account savedAccount = createApprovedAccount(
+                accountOpeningRequest.getRequester(),
+                accountOpeningRequest.getAccountType(),
+                accountOpeningRequest.getOpeningBalance()
         );
 
-        Account savedAccount = accountRepository.save(account);
-        Transaction transaction = saveTransaction(
-                savedAccount,
-                TransactionType.DEPOSIT,
-                TransactionStatus.POSTED,
-                TransactionChannel.SYSTEM,
-                openingBalance,
-                null,
-                "Account opened with initial funding"
-        );
-        saveLedgerEntry(savedAccount, transaction, LedgerEntryType.CREDIT, openingBalance, "Account opening balance");
-        auditService.log(username, "ACCOUNT_CREATED", "Account", savedAccount.getAccountNumber(),
-                "Account opened with status " + savedAccount.getStatus());
-        log.info("Account {} created for user {}", savedAccount.getAccountNumber(), username);
-        return toAccountResponse(savedAccount);
+        accountOpeningRequest.approve(admin, savedAccount);
+        AccountOpeningRequest savedRequest = accountOpeningRequestRepository.save(accountOpeningRequest);
+        auditService.log(admin.getUsername(), "ACCOUNT_OPENING_REQUEST_APPROVED", "AccountOpeningRequest",
+                String.valueOf(savedRequest.getId()), "Approved account " + savedAccount.getAccountNumber());
+        log.info("Admin {} approved account opening request {}", admin.getUsername(), savedRequest.getId());
+        return toAccountOpeningRequestResponse(savedRequest);
     }
 
     public List<AccountResponse> getAccountsForUser(String username) {
@@ -224,6 +257,11 @@ public class BankingService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
+    private CustomerProfile getCustomerProfile(Long userId) {
+        return customerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
+    }
+
     private Account getAccountEntity(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
@@ -277,6 +315,28 @@ public class BankingService {
         ));
     }
 
+    private Account createApprovedAccount(BankUser owner,
+                                          com.onlinebanking.model.AccountType accountType,
+                                          BigDecimal openingBalance) {
+        String generatedAccountNumber = generateAccountNumber(accountType);
+        Account account = new Account(generatedAccountNumber, accountType, openingBalance, owner);
+        Account savedAccount = accountRepository.save(account);
+        Transaction transaction = saveTransaction(
+                savedAccount,
+                TransactionType.DEPOSIT,
+                TransactionStatus.POSTED,
+                TransactionChannel.SYSTEM,
+                openingBalance,
+                null,
+                "Account opened with initial funding"
+        );
+        saveLedgerEntry(savedAccount, transaction, LedgerEntryType.CREDIT, openingBalance, "Account opening balance");
+        auditService.log(owner.getUsername(), "ACCOUNT_CREATED", "Account", savedAccount.getAccountNumber(),
+                "Account opened with status " + savedAccount.getStatus());
+        log.info("Account {} created for user {}", savedAccount.getAccountNumber(), owner.getUsername());
+        return savedAccount;
+    }
+
     private void saveLedgerEntry(Account account,
                                  Transaction transaction,
                                  LedgerEntryType entryType,
@@ -326,6 +386,24 @@ public class BankingService {
                 account.getOwner().getId(),
                 account.getOwner().getUsername(),
                 account.getCreatedAt()
+        );
+    }
+
+    public AccountOpeningRequestResponse toAccountOpeningRequestResponse(AccountOpeningRequest accountOpeningRequest) {
+        CustomerProfile profile = getCustomerProfile(accountOpeningRequest.getRequester().getId());
+        return new AccountOpeningRequestResponse(
+                accountOpeningRequest.getId(),
+                accountOpeningRequest.getRequester().getId(),
+                accountOpeningRequest.getRequester().getUsername(),
+                profile.getFullName(),
+                accountOpeningRequest.getAccountType(),
+                accountOpeningRequest.getOpeningBalance(),
+                profile.getKycStatus().name(),
+                accountOpeningRequest.getStatus(),
+                accountOpeningRequest.getApprovedAccount() == null ? null : accountOpeningRequest.getApprovedAccount().getAccountNumber(),
+                accountOpeningRequest.getReviewedBy() == null ? null : accountOpeningRequest.getReviewedBy().getUsername(),
+                accountOpeningRequest.getCreatedAt(),
+                accountOpeningRequest.getReviewedAt()
         );
     }
 

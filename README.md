@@ -76,6 +76,7 @@ http://localhost:5173
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/accounts`
+- `GET /api/accounts/requests`
 - `GET /api/accounts`
 - `GET /api/accounts/{accountNumber}`
 - `POST /api/accounts/{accountNumber}/deposit`
@@ -84,6 +85,8 @@ http://localhost:5173
 - `GET /api/accounts/{accountNumber}/transactions`
 - `POST /api/beneficiaries`
 - `GET /api/beneficiaries`
+- `GET /api/admin/account-requests`
+- `PATCH /api/admin/account-requests/{requestId}/approve`
 
 ## Example API flow
 
@@ -122,7 +125,7 @@ Example auth response:
 }
 ```
 
-Create an account with the returned token:
+Submit an account opening request after KYC verification:
 
 ```json
 POST /api/accounts
@@ -133,14 +136,20 @@ Authorization: Bearer <token>
 }
 ```
 
-The backend generates account numbers automatically in a fixed pattern such as:
+The request remains pending until an admin approves it. Only after approval does the backend generate the account number in a fixed pattern such as:
 
 ```text
 9123400001
 8456700001
 ```
 
-Transfer funds:
+Approve the request as admin:
+
+```text
+PATCH /api/admin/account-requests/{requestId}/approve
+```
+
+Transfer funds after approval:
 
 ```json
 POST /api/accounts/transfer
@@ -192,6 +201,7 @@ If a browser calls an API directly, some network path will always be visible in 
 - Customer profiles with KYC status
 - Customer profile addresses normalized into a separate `customer_addresses` relation to keep customer attributes in 3NF
 - Customer onboarding with name, address, gender, occupation, phone number, and date of birth
+- Account opening requests require verified KYC and admin approval before the account is created
 - Account status and currency code
 - Backend-generated account numbers with a standard pattern
 - Beneficiary registry per customer tied directly to approved internal account numbers

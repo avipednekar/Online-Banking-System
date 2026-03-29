@@ -1,4 +1,5 @@
 import { AdminOverviewPanel } from "../components/admin/AdminOverviewPanel";
+import { AccountRequestQueuePanel } from "../components/admin/AccountRequestQueuePanel";
 import { CustomerRegistryPanel } from "../components/admin/CustomerRegistryPanel";
 import { StatCard } from "../components/ui/StatCard";
 import { useAdminWorkspace } from "../hooks/useAdminWorkspace";
@@ -29,6 +30,11 @@ export default function AdminPage() {
           value={workspace.overview?.pendingKyc ?? 0}
           detail="Customers waiting for central verification."
         />
+        <StatCard
+          label="Pending account requests"
+          value={workspace.overview?.pendingAccountRequests ?? 0}
+          detail="Requests awaiting admin approval before account creation."
+        />
       </section>
 
       <AdminOverviewPanel
@@ -46,6 +52,14 @@ export default function AdminPage() {
         onSearchChange={workspace.setSearchTerm}
         onRefresh={workspace.loadCustomers}
         onUpdateKyc={workspace.updateKyc}
+      />
+
+      <AccountRequestQueuePanel
+        requests={workspace.accountRequests}
+        isLoading={workspace.tracker.isPending("accountRequests") || workspace.tracker.isPending("approveAccountRequest")}
+        error={workspace.requestsError}
+        onRefresh={workspace.loadAccountRequests}
+        onApprove={workspace.approveAccountRequest}
       />
     </>
   );

@@ -18,16 +18,16 @@ export function LandingHero() {
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <RouteLink
-              to="/register"
+              to="/login"
               className="rounded-lg bg-[linear-gradient(135deg,#00113a_0%,#758dd5_100%)] px-8 py-4 text-center text-lg font-bold text-white hover:opacity-90"
             >
-              Get Started
+              Login
             </RouteLink>
             <RouteLink
-              to="/login"
+              to="/register"
               className="rounded-lg bg-[#e6e8ea] px-8 py-4 text-center text-lg font-bold text-[#191c1e] hover:bg-[#e0e3e5]"
             >
-              View Demo
+              Register
             </RouteLink>
           </div>
         </div>

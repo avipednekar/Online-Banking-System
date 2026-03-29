@@ -1,5 +1,5 @@
-import { Bell, Settings } from "lucide-react";
-import { landingImages, landingNavItems } from "../../constants/landingContent";
+import { RouteLink } from "../common/RouteLink";
+import { landingNavItems } from "../../constants/landingContent";
 
 export function LandingNavbar() {
   return (
@@ -27,28 +27,19 @@ export function LandingNavbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            className="rounded-full bg-transparent p-2 text-slate-500 hover:translate-y-0 hover:bg-slate-50 hover:text-[#00113a]"
-            aria-label="Notifications"
+        <div className="flex items-center gap-3">
+          <RouteLink
+            to="/login"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white px-5 text-sm font-bold text-[#00113a] transition hover:-translate-y-0.5 hover:border-[#00113a]/30 hover:bg-slate-50"
           >
-            <Bell className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="rounded-full bg-transparent p-2 text-slate-500 hover:translate-y-0 hover:bg-slate-50 hover:text-[#00113a]"
-            aria-label="Settings"
+            Login
+          </RouteLink>
+          <RouteLink
+            to="/register"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,#00113a_0%,#758dd5_100%)] px-5 text-sm font-bold text-white shadow-[0_20px_30px_-20px_rgba(0,17,58,0.95)] transition hover:-translate-y-0.5 hover:opacity-95"
           >
-            <Settings className="h-5 w-5" />
-          </button>
-          <div className="h-8 w-8 overflow-hidden rounded-full border border-[rgba(117,118,130,0.15)]">
-            <img
-              src={landingImages.avatar}
-              alt="User profile avatar"
-              className="h-full w-full object-cover"
-            />
-          </div>
+            Register
+          </RouteLink>
         </div>
       </div>
     </nav>

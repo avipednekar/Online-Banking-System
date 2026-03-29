@@ -3,15 +3,18 @@ package com.onlinebanking.config;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.UserRole;
 import com.onlinebanking.repository.BankUserRepository;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AdminBootstrap {
+@Order(2)
+public class AdminBootstrap implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);
 
@@ -32,8 +35,8 @@ public class AdminBootstrap {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @PostConstruct
-    public void ensureAdminUser() {
+    @Override
+    public void run(ApplicationArguments args) {
         if (bankUserRepository.findByUsernameIgnoreCase(adminUsername).isPresent()) {
             return;
         }

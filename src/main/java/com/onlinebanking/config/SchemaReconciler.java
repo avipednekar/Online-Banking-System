@@ -1,11 +1,12 @@
 package com.onlinebanking.config;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
 import java.sql.PreparedStatement;
@@ -21,7 +22,8 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
 @Component
-public class SchemaReconciler {
+@Order(0)
+public class SchemaReconciler implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SchemaReconciler.class);
 
@@ -33,14 +35,19 @@ public class SchemaReconciler {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @PostConstruct
-    public void reconcile() {
+    @Override
+    public void run(ApplicationArguments args) {
         ensureColumn("accounts", "status", "varchar(20) not null default 'ACTIVE'");
         ensureColumn("accounts", "currency_code", "varchar(3) not null default 'INR'");
         ensureColumn("accounts", "updated_at", "timestamp not null default current_timestamp");
         ensureColumn("customer_profiles", "kyc_status", "varchar(20) not null default 'PENDING'");
         ensureColumn("customer_profiles", "updated_at", "timestamp not null default current_timestamp");
         ensureColumn("customer_profiles", "address_id", "bigint");
+        relaxLegacyColumn("customer_profiles", "address_line1");
+        relaxLegacyColumn("customer_profiles", "city");
+        relaxLegacyColumn("customer_profiles", "state");
+        relaxLegacyColumn("customer_profiles", "postal_code");
+        relaxLegacyColumn("customer_profiles", "country");
         ensureColumn("transactions", "transaction_reference", "varchar(255) not null default 'LEGACY-TXN'");
         ensureColumn("transactions", "status", "varchar(20) not null default 'POSTED'");
         ensureColumn("transactions", "channel", "varchar(30) not null default 'SYSTEM'");
@@ -50,9 +57,9 @@ public class SchemaReconciler {
         ensureColumn("ledger_entries", "entry_type", "varchar(20) not null default 'CREDIT'");
         ensureColumn("ledger_entries", "running_balance", "numeric(19,2) not null default 0");
         ensureColumn("ledger_entries", "narrative", "varchar(255) not null default 'Legacy ledger entry'");
-        ensureColumn("beneficiaries", "bank_id", "bigint");
+        relaxLegacyColumn("ledger_entries", "account_id");
+        relaxLegacyColumn("beneficiaries", "bank_name");
         migrateCustomerAddresses();
-        migrateBeneficiaryBanks();
     }
 
     private void ensureColumn(String tableName, String columnName, String definition) {
@@ -70,6 +77,24 @@ public class SchemaReconciler {
         String statement = "alter table " + tableName + " add column " + columnName + " " + definition;
         jdbcTemplate.execute(statement);
         log.info("Applied legacy schema patch: {}", statement);
+    }
+
+    private void relaxLegacyColumn(String tableName, String columnName) {
+        try (Connection connection = dataSource.getConnection()) {
+            if (!tableExists(connection, tableName) || !columnExists(connection, tableName, columnName)) {
+                return;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to inspect legacy column constraint for " + tableName + "." + columnName, exception);
+        }
+
+        String statement = "alter table " + tableName + " alter column " + columnName + " drop not null";
+        try {
+            jdbcTemplate.execute(statement);
+            log.info("Relaxed legacy not-null constraint: {}", statement);
+        } catch (RuntimeException exception) {
+            log.debug("Legacy not-null relaxation skipped for {}.{}: {}", tableName, columnName, exception.getMessage());
+        }
     }
 
     private boolean tableExists(Connection connection, String tableName) throws SQLException {
@@ -125,29 +150,6 @@ public class SchemaReconciler {
         }
     }
 
-    private void migrateBeneficiaryBanks() {
-        try (Connection connection = dataSource.getConnection()) {
-            if (!tableExists(connection, "beneficiaries")
-                    || !tableExists(connection, "banks")
-                    || !columnExists(connection, "beneficiaries", "bank_id")
-                    || !columnExists(connection, "beneficiaries", "bank_name")) {
-                return;
-            }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Failed to inspect legacy beneficiary bank columns", exception);
-        }
-
-        for (Map<String, Object> row : jdbcTemplate.queryForList("""
-                select id, bank_name
-                from beneficiaries
-                where bank_id is null
-                """)) {
-            String bankName = getTrimmedValue(row.get("bank_name"));
-            Long bankId = resolveOrCreateBankId(StringUtils.hasText(bankName) ? bankName : "Internal Bank");
-            jdbcTemplate.update("update beneficiaries set bank_id = ? where id = ?", bankId, row.get("id"));
-        }
-    }
-
     private Long insertCustomerAddress(Map<String, Object> row) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
@@ -167,37 +169,25 @@ public class SchemaReconciler {
         return extractGeneratedId(keyHolder, "customer address");
     }
 
-    private Long findExistingBankId(String bankName) {
-        return jdbcTemplate.query("""
-                        select id
-                        from banks
-                        where lower(bank_name) = lower(?)
-                        """,
-                resultSet -> resultSet.next() ? resultSet.getLong("id") : null,
-                bankName
-        );
-    }
-
-    private Long createBank(String bankName) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement statement = connection.prepareStatement("""
-                    insert into banks (bank_name, created_at)
-                    values (?, current_timestamp)
-                    """, Statement.RETURN_GENERATED_KEYS);
-            statement.setString(1, bankName);
-            return statement;
-        }, keyHolder);
-        return extractGeneratedId(keyHolder, "bank");
-    }
-
-    private Long resolveOrCreateBankId(String bankName) {
-        Long existingBankId = findExistingBankId(bankName);
-        return existingBankId != null ? existingBankId : createBank(bankName);
-    }
-
     private Long extractGeneratedId(KeyHolder keyHolder, String entityName) {
-        Number key = keyHolder.getKey();
+        Map<String, Object> keys = keyHolder.getKeys();
+        if (keys != null) {
+            Object id = keys.get("id");
+            if (id == null) {
+                id = keys.get("ID");
+            }
+            if (id instanceof Number number) {
+                return number.longValue();
+            }
+        }
+
+        Number key;
+        try {
+            key = keyHolder.getKey();
+        } catch (org.springframework.dao.InvalidDataAccessApiUsageException exception) {
+            throw new IllegalStateException("Failed to resolve generated id for legacy " + entityName + " row", exception);
+        }
+
         if (key == null) {
             throw new IllegalStateException("Failed to create legacy " + entityName + " row");
         }

@@ -8,12 +8,10 @@ import com.onlinebanking.exception.DuplicateResourceException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.Account;
 import com.onlinebanking.model.AccountStatus;
-import com.onlinebanking.model.Bank;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.Beneficiary;
 import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.repository.AccountRepository;
-import com.onlinebanking.repository.BankRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
@@ -32,20 +30,17 @@ public class BeneficiaryService {
 
     private final BeneficiaryRepository beneficiaryRepository;
     private final AccountRepository accountRepository;
-    private final BankRepository bankRepository;
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final AuditService auditService;
 
     public BeneficiaryService(BeneficiaryRepository beneficiaryRepository,
                               AccountRepository accountRepository,
-                              BankRepository bankRepository,
                               BankUserRepository bankUserRepository,
                               CustomerProfileRepository customerProfileRepository,
                               AuditService auditService) {
         this.beneficiaryRepository = beneficiaryRepository;
         this.accountRepository = accountRepository;
-        this.bankRepository = bankRepository;
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
         this.auditService = auditService;
@@ -61,12 +56,10 @@ public class BeneficiaryService {
         BankUser owner = bankUserRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         BeneficiaryLookupResponse verifiedAccount = verifyBeneficiaryAccount(owner, normalizedAccountNumber);
-        Bank bank = resolveBank(verifiedAccount.bankName());
 
         Beneficiary beneficiary = beneficiaryRepository.save(new Beneficiary(
                 owner,
                 request.nickname().trim(),
-                bank,
                 normalizedAccountNumber
         ));
 
@@ -133,17 +126,11 @@ public class BeneficiaryService {
         return new BeneficiaryResponse(
                 beneficiary.getId(),
                 beneficiary.getNickname(),
-                beneficiary.getBankName(),
+                INTERNAL_BANK_NAME,
                 beneficiary.getAccountNumber(),
                 accountHolderName,
                 beneficiary.isActive(),
                 beneficiary.getCreatedAt()
         );
-    }
-
-    private Bank resolveBank(String bankName) {
-        String normalizedBankName = bankName.trim();
-        return bankRepository.findByBankNameIgnoreCase(normalizedBankName)
-                .orElseGet(() -> bankRepository.save(new Bank(normalizedBankName)));
     }
 }

@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> {
 
-    List<LedgerEntry> findByAccountAccountNumberOrderByCreatedAtDesc(String accountNumber);
+    List<LedgerEntry> findByTransactionAccountAccountNumberOrderByCreatedAtDesc(String accountNumber);
 }

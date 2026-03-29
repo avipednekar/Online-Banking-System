@@ -55,9 +55,6 @@ public class Account {
     @OneToMany(mappedBy = "account")
     private List<Transaction> transactions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "account")
-    private List<LedgerEntry> ledgerEntries = new ArrayList<>();
-
     public Account() {
     }
 

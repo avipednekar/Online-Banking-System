@@ -23,10 +23,6 @@ public class LedgerEntry {
     private Long id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "account_id")
-    private Account account;
-
-    @ManyToOne(optional = false)
     @JoinColumn(name = "transaction_id")
     private Transaction transaction;
 
@@ -49,13 +45,11 @@ public class LedgerEntry {
     public LedgerEntry() {
     }
 
-    public LedgerEntry(Account account,
-                       Transaction transaction,
+    public LedgerEntry(Transaction transaction,
                        LedgerEntryType entryType,
                        BigDecimal amount,
                        BigDecimal runningBalance,
                        String narrative) {
-        this.account = account;
         this.transaction = transaction;
         this.entryType = entryType;
         this.amount = amount;

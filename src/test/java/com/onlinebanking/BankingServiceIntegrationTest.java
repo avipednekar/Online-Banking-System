@@ -8,7 +8,6 @@ import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.exception.BusinessException;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.AccountType;
-import com.onlinebanking.repository.BankRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.service.AuthService;
 import com.onlinebanking.service.BankingService;
@@ -41,9 +40,6 @@ class BankingServiceIntegrationTest {
 
     @Autowired
     private CustomerProfileRepository customerProfileRepository;
-
-    @Autowired
-    private BankRepository bankRepository;
 
     @Test
     void depositIncreasesBalance() {
@@ -140,7 +136,7 @@ class BankingServiceIntegrationTest {
         beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Mohan", "Internal Bank", firstAccount));
         beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Nita", "Internal Bank", secondAccount));
 
-        assertEquals(1L, bankRepository.count());
+        assertEquals("Internal Bank", beneficiaryService.getBeneficiaries("lina").get(0).bankName());
     }
 
     @Test

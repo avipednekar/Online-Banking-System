@@ -30,10 +30,6 @@ public class Beneficiary {
     @Column(nullable = false)
     private String nickname;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "bank_id")
-    private Bank bank;
-
     @Column(name = "account_number", nullable = false)
     private String accountNumber;
 
@@ -46,10 +42,9 @@ public class Beneficiary {
     public Beneficiary() {
     }
 
-    public Beneficiary(BankUser owner, String nickname, Bank bank, String accountNumber) {
+    public Beneficiary(BankUser owner, String nickname, String accountNumber) {
         this.owner = owner;
         this.nickname = nickname;
-        this.bank = bank;
         this.accountNumber = accountNumber;
         this.active = true;
         this.createdAt = LocalDateTime.now();
@@ -65,14 +60,6 @@ public class Beneficiary {
 
     public String getNickname() {
         return nickname;
-    }
-
-    public String getBankName() {
-        return bank.getBankName();
-    }
-
-    public Bank getBank() {
-        return bank;
     }
 
     public String getAccountNumber() {

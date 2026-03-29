@@ -283,7 +283,6 @@ public class BankingService {
                                  BigDecimal amount,
                                  String narrative) {
         ledgerEntryRepository.save(new LedgerEntry(
-                account,
                 transaction,
                 entryType,
                 amount,

@@ -574,6 +574,11 @@
   color: var(--danger);
 }
 
+.vault-admin-status.is-warning {
+  background: rgba(255, 193, 7, 0.15);
+  color: #8B6914;
+}
+
 .vault-admin-status.is-rejected {
   background: rgba(180, 35, 24, 0.12);
   color: var(--danger);
@@ -953,6 +958,16 @@ button.secondary:hover {
 
 button.notification-close {
   padding: 0.45rem 0.8rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+}
+
+button.notification-close:hover {
+  background: rgba(25, 28, 30, 0.04);
+  color: var(--ink);
 }
 
 button.danger {
@@ -1175,6 +1190,7 @@ select:focus {
   border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 1rem;
+  animation: slideInRight 320ms ease;
 }
 
 .notification-card.error {
@@ -2784,11 +2800,12 @@ select:focus {
 }
 
 .vault-login-remember input {
-  width: 1rem;
-  height: 1rem;
+  width: 1.15rem;
+  height: 1.15rem;
   margin: 0;
   border-radius: 4px;
   accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .vault-login-submit {
@@ -4240,6 +4257,81 @@ select:focus {
   to {
     transform: rotate(360deg);
   }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.vault-dashboard-empty-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: rgba(242, 244, 246, 0.7);
+  border: 1px dashed rgba(117, 141, 213, 0.3);
+  color: #69758f;
+}
+
+.vault-dashboard-empty-state svg {
+  flex-shrink: 0;
+  color: #758dd5;
+  margin-top: 0.15rem;
+}
+
+.vault-dashboard-empty-state strong {
+  display: block;
+  color: var(--accent);
+  font-size: 0.96rem;
+  margin-bottom: 0.25rem;
+}
+
+.vault-dashboard-empty-state p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #7b8799;
+}
+
+.vault-login-text-muted {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #8793ad;
+  letter-spacing: 0.02em;
+}
+
+.vault-login-text-muted em {
+  font-style: normal;
+  font-size: 0.62rem;
+  padding: 0.15rem 0.45rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: rgba(117, 141, 213, 0.12);
+  color: #57657a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.vault-login-footer-link,
+.vault-register-footer-link {
+  color: #8793ad;
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+.vault-login-footer-link:hover,
+.vault-register-footer-link:hover {
+  color: #6b7a96;
 }
 
 @media (max-width: 1100px) {

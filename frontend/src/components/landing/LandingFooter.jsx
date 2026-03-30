@@ -32,7 +32,7 @@ export function LandingFooter() {
       </div>
 
       <div className="mx-auto mt-20 flex max-w-screen-2xl flex-col items-center justify-between gap-6 border-t border-white/5 px-6 pt-8 text-sm text-[#758dd5] md:flex-row">
-        <p>(c) 2024 Vault Financial Inc. All rights reserved.</p>
+        <p>&copy; 2026 Vault Financial Inc. All rights reserved.</p>
         <div className="flex flex-wrap justify-center gap-8">
           {landingFooterPolicies.map((policy) => (
             <a key={policy} href="#" className="transition-colors hover:text-white">

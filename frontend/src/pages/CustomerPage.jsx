@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Landmark,
+  LogOut,
   Plus,
   Settings,
   ShoppingCart,
@@ -88,16 +89,16 @@ function getTransactionPresentation(entry) {
       };
     case "WITHDRAWAL":
       return {
-        title: "Metro Utilities",
-        subtitle: entry.description || "Recurring Bill Pay",
+        title: "Withdrawal",
+        subtitle: entry.description || "Funds withdrawn",
         amountClassName: "is-negative",
         icon: Zap
       };
     case "DEPOSIT":
     default:
       return {
-        title: "Apple Store - Online",
-        subtitle: entry.description || "Merchant Purchase",
+        title: "Deposit",
+        subtitle: entry.description || "Funds deposited",
         amountClassName: Number(entry.amount) >= 0 ? "is-positive" : "is-negative",
         icon: ShoppingCart
       };
@@ -305,6 +306,30 @@ function QuickActionCard({
   );
 }
 
+function EmptyAccountsState() {
+  return (
+    <div className="vault-dashboard-empty-state">
+      <Wallet size={28} strokeWidth={1.5} />
+      <div>
+        <strong>No accounts yet</strong>
+        <p>Open your first account to get started with Vault Financial.</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyTransactionsState() {
+  return (
+    <div className="vault-dashboard-empty-state">
+      <ArrowLeftRight size={28} strokeWidth={1.5} />
+      <div>
+        <strong>No transactions yet</strong>
+        <p>Select an account above to view its transaction history, or make your first deposit.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function CustomerPage() {
   const workspace = useCustomerWorkspace();
   const [activeAction, setActiveAction] = useState("transfer");
@@ -327,15 +352,15 @@ export default function CustomerPage() {
             </a>
             <a href="#accounts">Accounts</a>
             <a href="#actions">Transfers</a>
-            <a href="#transactions">Investments</a>
+            <a href="#transactions">History</a>
           </nav>
         </div>
 
         <div className="vault-dashboard-nav-actions">
-          <button type="button" aria-label="Notifications">
+          <button type="button" aria-label="Notifications" title="Coming Soon">
             <Bell size={16} />
           </button>
-          <button type="button" aria-label="Settings">
+          <button type="button" aria-label="Settings" title="Coming Soon">
             <Settings size={16} />
           </button>
           <div className="vault-dashboard-user">
@@ -349,9 +374,10 @@ export default function CustomerPage() {
             type="button"
             className="vault-dashboard-logout"
             onClick={workspace.logoutUser}
-            aria-label="Logout"
+            aria-label="Log out"
+            title="Sign Out"
           >
-            <ArrowRight size={16} />
+            <LogOut size={16} />
           </button>
         </div>
       </header>
@@ -400,49 +426,50 @@ export default function CustomerPage() {
         <section id="accounts" className="vault-dashboard-card vault-dashboard-accounts-section">
           <div className="vault-dashboard-card-header">
             <h2>Your Accounts</h2>
-            <button type="button" className="vault-dashboard-linkish">
-              View All
-            </button>
           </div>
 
           {workspace.accountsError ? (
             <div className="vault-dashboard-inline-state error">{workspace.accountsError}</div>
           ) : null}
 
-          <div className="vault-dashboard-account-strip">
-            {workspace.accounts.map((account, index) => (
-              <button
-                key={account.accountNumber}
-                type="button"
-                className={[
-                  "vault-dashboard-account-card",
-                  workspace.selectedAccount === account.accountNumber ? "is-selected" : "",
-                  index === 1 ? "is-portfolio" : ""
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                onClick={() => workspace.loadTransactions(account.accountNumber)}
-              >
-                <div className="vault-dashboard-account-top">
-                  <div>
-                    <p>{getAccountLabel(account.accountType)}</p>
-                    <span>**** {formatAccountAlias(account.accountNumber)}</span>
+          {workspace.accounts.length === 0 && !workspace.accountsError ? (
+            <EmptyAccountsState />
+          ) : (
+            <div className="vault-dashboard-account-strip">
+              {workspace.accounts.map((account, index) => (
+                <button
+                  key={account.accountNumber}
+                  type="button"
+                  className={[
+                    "vault-dashboard-account-card",
+                    workspace.selectedAccount === account.accountNumber ? "is-selected" : "",
+                    index === 1 ? "is-portfolio" : ""
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => workspace.loadTransactions(account.accountNumber)}
+                >
+                  <div className="vault-dashboard-account-top">
+                    <div>
+                      <p>{getAccountLabel(account.accountType)}</p>
+                      <span>**** {formatAccountAlias(account.accountNumber)}</span>
+                    </div>
+                    {index === 0 ? <Wallet size={16} /> : index === 1 ? <Landmark size={16} /> : <Wallet size={16} />}
                   </div>
-                  {index === 0 ? <Wallet size={16} /> : index === 1 ? <Landmark size={16} /> : <Wallet size={16} />}
-                </div>
-                <div className="vault-dashboard-account-bottom">
-                  <strong>{formatMoney(account.balance, account.currencyCode)}</strong>
-                  <span>
-                    {account.status === "ACTIVE"
-                      ? index === 1
-                        ? "Market Active"
-                        : "+ 2.4% APY"
-                      : account.status}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="vault-dashboard-account-bottom">
+                    <strong>{formatMoney(account.balance, account.currencyCode)}</strong>
+                    <span>
+                      {account.status === "ACTIVE"
+                        ? index === 1
+                          ? "Market Active"
+                          : "+ 2.4% APY"
+                        : account.status}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="vault-dashboard-grid">
@@ -459,7 +486,7 @@ export default function CustomerPage() {
           <section className="vault-dashboard-card">
             <div className="vault-dashboard-card-header">
               <h2>Recent Beneficiaries</h2>
-              <button type="button" className="vault-dashboard-inline-button">
+              <button type="button" className="vault-dashboard-inline-button" title="Coming Soon" disabled>
                 <UserPlus size={14} />
                 Add New
               </button>
@@ -469,22 +496,32 @@ export default function CustomerPage() {
               <div className="vault-dashboard-inline-state error">{workspace.beneficiariesError}</div>
             ) : null}
 
-            <div className="vault-dashboard-beneficiaries">
-              {workspace.beneficiaries.slice(0, 4).map((beneficiary, index) => (
-                <article key={beneficiary.id} className="vault-dashboard-beneficiary">
-                  <div className={`vault-dashboard-beneficiary-avatar tone-${index % 4}`}>
-                    {getInitials(beneficiary.nickname || beneficiary.accountHolderName)}
-                  </div>
-                  <div>
-                    <strong>{beneficiary.nickname}</strong>
-                    <span>
-                      {beneficiary.bankName} • ****{formatAccountAlias(beneficiary.accountNumber)}
-                    </span>
-                  </div>
-                  <ChevronRight size={16} />
-                </article>
-              ))}
-            </div>
+            {workspace.beneficiaries.length === 0 && !workspace.beneficiariesError ? (
+              <div className="vault-dashboard-empty-state">
+                <UserPlus size={28} strokeWidth={1.5} />
+                <div>
+                  <strong>No beneficiaries</strong>
+                  <p>Add beneficiaries to start making transfers.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="vault-dashboard-beneficiaries">
+                {workspace.beneficiaries.slice(0, 4).map((beneficiary, index) => (
+                  <article key={beneficiary.id} className="vault-dashboard-beneficiary">
+                    <div className={`vault-dashboard-beneficiary-avatar tone-${index % 4}`}>
+                      {getInitials(beneficiary.nickname || beneficiary.accountHolderName)}
+                    </div>
+                    <div>
+                      <strong>{beneficiary.nickname}</strong>
+                      <span>
+                        {beneficiary.bankName} • ****{formatAccountAlias(beneficiary.accountNumber)}
+                      </span>
+                    </div>
+                    <ChevronRight size={16} />
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </section>
 
@@ -492,10 +529,10 @@ export default function CustomerPage() {
           <div className="vault-dashboard-card-header">
             <h2>Recent Transactions</h2>
             <div className="vault-dashboard-table-actions">
-              <button type="button" aria-label="Filter transactions">
+              <button type="button" aria-label="Filter transactions" title="Filter">
                 <ArrowLeftRight size={14} />
               </button>
-              <button type="button" aria-label="Download transactions">
+              <button type="button" aria-label="Download transactions" title="Download">
                 <Download size={14} />
               </button>
             </div>
@@ -505,55 +542,59 @@ export default function CustomerPage() {
             <div className="vault-dashboard-inline-state error">{workspace.transactionsError}</div>
           ) : null}
 
-          <div className="vault-dashboard-table-wrapper">
-            <table className="vault-dashboard-table">
-              <thead>
-                <tr>
-                  <th>Transaction Type</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th className="is-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workspace.transactions.map((entry) => {
-                  const presentation = getTransactionPresentation(entry);
-                  const StatusIcon = presentation.icon;
+          {workspace.transactions.length === 0 && !workspace.transactionsError ? (
+            <EmptyTransactionsState />
+          ) : (
+            <div className="vault-dashboard-table-wrapper">
+              <table className="vault-dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Transaction Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th className="is-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workspace.transactions.map((entry) => {
+                    const presentation = getTransactionPresentation(entry);
+                    const StatusIcon = presentation.icon;
 
-                  return (
-                    <tr key={entry.id}>
-                      <td>
-                        <div className="vault-dashboard-transaction-main">
-                          <span className={`vault-dashboard-transaction-icon ${presentation.amountClassName}`}>
-                            <StatusIcon size={15} />
-                          </span>
-                          <div>
-                            <strong>{presentation.title}</strong>
-                            <span>{presentation.subtitle}</span>
+                    return (
+                      <tr key={entry.id}>
+                        <td>
+                          <div className="vault-dashboard-transaction-main">
+                            <span className={`vault-dashboard-transaction-icon ${presentation.amountClassName}`}>
+                              <StatusIcon size={15} />
+                            </span>
+                            <div>
+                              <strong>{presentation.title}</strong>
+                              <span>{presentation.subtitle}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>{formatCompactDate(entry.createdAt)}</td>
-                      <td>
-                        <span className={`vault-dashboard-status-badge is-${getStatusTone(entry.status)}`}>
-                          {String(entry.status || "POSTED")}
-                        </span>
-                      </td>
-                      <td className={`is-right ${presentation.amountClassName}`}>
-                        {Number(entry.amount) >= 0 ? "+" : "-"}
-                        {formatMoney(Math.abs(Number(entry.amount || 0)), "USD")}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td>{formatCompactDate(entry.createdAt)}</td>
+                        <td>
+                          <span className={`vault-dashboard-status-badge is-${getStatusTone(entry.status)}`}>
+                            {String(entry.status || "POSTED")}
+                          </span>
+                        </td>
+                        <td className={`is-right ${presentation.amountClassName}`}>
+                          {Number(entry.amount) >= 0 ? "+" : "-"}
+                          {formatMoney(Math.abs(Number(entry.amount || 0)), "USD")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
 
       <footer className="vault-dashboard-footer">
-        <p>(c) 2023 Vault Financial Services. All deposits are FDIC insured up to $250,000.</p>
+        <p>&copy; 2026 Vault Financial Services. All deposits are FDIC insured up to $250,000.</p>
         <div>
           <a href="#dashboard">Privacy Policy</a>
           <a href="#dashboard">Terms of Service</a>

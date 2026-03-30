@@ -90,7 +90,7 @@ function FeatureCard({ feature }) {
 
 export function LandingFeatures() {
   return (
-    <section className="bg-[#f2f4f6] py-24">
+    <section id="features" className="bg-[#f2f4f6] py-24">
       <div className="mx-auto max-w-screen-2xl px-6">
         <div className="mb-16">
           <h2 className="font-manrope text-4xl font-extrabold text-[#00113a]">

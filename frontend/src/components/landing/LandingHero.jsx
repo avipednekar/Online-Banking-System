@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import { RouteLink } from "../common/RouteLink";
 import { landingImages } from "../../constants/landingContent";
 
@@ -6,7 +7,7 @@ export function LandingHero() {
     <section className="relative overflow-hidden bg-[#f7f9fb] py-20 lg:py-28">
       <div className="mx-auto grid max-w-screen-2xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-12">
         <div className="lg:col-span-7">
-          <span className="inline-block rounded-full bg-[#d5e3fc] px-4 py-1.5 text-sm font-semibold uppercase tracking-wide text-[#57657a]">
+          <span className="inline-block rounded-full bg-[#d5e3fc] px-4 py-1.5 text-sm font-semibold uppercase tracking-wide text-[#3a5290]">
             Next-Gen Digital Banking
           </span>
           <h1 className="mt-6 max-w-[11ch] font-manrope text-5xl font-extrabold leading-[1.05] tracking-[-0.05em] text-[#00113a] sm:text-6xl lg:text-7xl">
@@ -18,16 +19,17 @@ export function LandingHero() {
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <RouteLink
-              to="/login"
-              className="rounded-lg bg-[linear-gradient(135deg,#00113a_0%,#758dd5_100%)] px-8 py-4 text-center text-lg font-bold text-white hover:opacity-90"
+              to="/register"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#00113a_0%,#758dd5_100%)] px-8 py-4 text-center text-lg font-bold text-white shadow-[0_24px_48px_-20px_rgba(0,17,58,0.75)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_52px_-20px_rgba(0,17,58,0.85)]"
             >
-              Login
+              Get Started Free
+              <ArrowRight className="h-5 w-5" />
             </RouteLink>
             <RouteLink
-              to="/register"
-              className="rounded-lg bg-[#e6e8ea] px-8 py-4 text-center text-lg font-bold text-[#191c1e] hover:bg-[#e0e3e5]"
+              to="/login"
+              className="inline-flex items-center justify-center rounded-xl border-2 border-[#00113a]/20 bg-white px-8 py-4 text-center text-lg font-bold text-[#00113a] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#00113a]/40 hover:bg-[#f7f9fb]"
             >
-              Register
+              Sign In
             </RouteLink>
           </div>
         </div>

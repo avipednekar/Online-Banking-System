@@ -160,7 +160,7 @@ export default function RegisterPage() {
 
             <div className="vault-register-toggle">
               <RouteLink to="/login" className="vault-register-toggle-link">
-                Login
+                Sign In
               </RouteLink>
               <RouteLink to="/register" className="vault-register-toggle-link is-active">
                 Register
@@ -230,7 +230,7 @@ export default function RegisterPage() {
                     onChange={registerForm.setValue}
                     error={registerForm.errors.phoneNumber}
                     type="tel"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+91 98765 43210"
                   />
                   <RegisterField
                     label="Gender"
@@ -266,7 +266,7 @@ export default function RegisterPage() {
                   <h3>Residency Details</h3>
                 </div>
 
-                <div className="vault-register-grid vault-register-grid-residency">
+                <div className="vault-register-grid">
                   <RegisterField
                     label="Residential Address"
                     name="addressLine1"
@@ -308,17 +308,11 @@ export default function RegisterPage() {
                     error={registerForm.errors.country}
                     type="select"
                     options={orderedCountryOptions}
-                    className="is-wide"
                   />
                 </div>
               </section>
 
               <div className="vault-register-actions">
-                <button type="submit" className="vault-register-submit" disabled={authLoading}>
-                  {authLoading ? "Initializing secure onboarding..." : "Initialize Secure Onboarding"}
-                  <ArrowRight size={18} strokeWidth={2} />
-                </button>
-
                 <label className="vault-register-consent">
                   <input
                     type="checkbox"
@@ -331,19 +325,24 @@ export default function RegisterPage() {
                     }}
                   />
                   <span>
-                    I agree to the <RouteLink to="/register">Terms of Sovereignty</RouteLink> and
-                    the <RouteLink to="/register">Privacy Mandate</RouteLink>.
+                    I agree to the <strong>Terms of Service</strong> and
+                    the <strong>Privacy Policy</strong>.
                   </span>
                 </label>
                 {consentError ? <p className="vault-consent-error">{consentError}</p> : null}
+
+                <button type="submit" className="vault-register-submit" disabled={authLoading}>
+                  {authLoading ? "Initializing secure onboarding..." : "Create Secure Account"}
+                  <ArrowRight size={18} strokeWidth={2} />
+                </button>
               </div>
             </form>
 
             <footer className="vault-register-footer">
-              <p>(c) 2026 Vault Financial Institutional Services.</p>
+              <p>&copy; 2026 Vault Financial Institutional Services.</p>
               <nav>
-                <RouteLink to="/register">Support</RouteLink>
-                <RouteLink to="/register">Transparency</RouteLink>
+                <span className="vault-register-footer-link">Support</span>
+                <span className="vault-register-footer-link">Transparency</span>
               </nav>
             </footer>
           </div>

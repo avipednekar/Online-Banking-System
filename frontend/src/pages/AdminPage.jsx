@@ -55,7 +55,7 @@ function getStatusTone(status) {
     return "rejected";
   }
 
-  return "pending";
+  return "warning";
 }
 
 function getRiskExposure(overview) {
@@ -176,6 +176,13 @@ export default function AdminPage() {
                 key={item.id}
                 href={`#${item.id}`}
                 className={item.active ? "vault-admin-nav-item is-active" : "vault-admin-nav-item"}
+                onClick={(event) => {
+                  event.preventDefault();
+                  const target = document.getElementById(item.id);
+                  if (target) {
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
               >
                 <Icon size={17} />
                 <span>{item.label}</span>

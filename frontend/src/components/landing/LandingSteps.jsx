@@ -24,7 +24,7 @@ function StepCard({ step }) {
 
 export function LandingSteps() {
   return (
-    <section className="bg-[#f7f9fb] py-24">
+    <section id="how-it-works" className="bg-[#f7f9fb] py-24">
       <div className="mx-auto max-w-screen-2xl px-6 text-center">
         <h2 className="font-manrope text-4xl font-extrabold text-[#00113a]">
           Your path to precision banking

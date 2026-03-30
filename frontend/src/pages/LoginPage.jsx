@@ -98,7 +98,7 @@ export default function LoginPage() {
           <div className="vault-login-form-wrap">
             <div className="vault-login-header">
               <RouteLink to="/" className="vault-login-back-link">
-                Back to home
+                &larr; Back to home
               </RouteLink>
               <h2>Welcome Back</h2>
               <p>Enter your credentials to access your secure portfolio.</p>
@@ -117,9 +117,9 @@ export default function LoginPage() {
 
               <div className="vault-login-password-header">
                 <span>Password</span>
-                <button type="button" className="vault-login-text-action" disabled>
-                  Forgot Password?
-                </button>
+                <span className="vault-login-text-muted">
+                  Forgot Password? <em>Coming Soon</em>
+                </span>
               </div>
 
               <LoginField
@@ -157,7 +157,7 @@ export default function LoginPage() {
               </label>
 
               <button type="submit" className="vault-login-submit" disabled={authLoading}>
-                {authLoading ? "Authenticating..." : "Login to Vault"}
+                {authLoading ? "Authenticating..." : "Sign In to Vault"}
                 <ArrowRight size={18} strokeWidth={2} />
               </button>
             </form>
@@ -178,19 +178,19 @@ export default function LoginPage() {
             </div>
 
             <p className="vault-login-signup">
-              Don&apos;t have an account? <RouteLink to="/register">Sign up</RouteLink>
+              Don&apos;t have an account? <RouteLink to="/register">Create Account</RouteLink>
             </p>
           </div>
         </section>
       </div>
 
       <footer className="vault-login-footer">
-        <p>(c) 2026 The Digital Vault. All rights reserved.</p>
+        <p>&copy; 2026 The Digital Vault. All rights reserved.</p>
         <nav>
-          <RouteLink to="/login">Privacy Policy</RouteLink>
-          <RouteLink to="/login">Terms of Service</RouteLink>
-          <RouteLink to="/login">Security Guarantee</RouteLink>
-          <RouteLink to="/login">Contact</RouteLink>
+          <span className="vault-login-footer-link">Privacy Policy</span>
+          <span className="vault-login-footer-link">Terms of Service</span>
+          <span className="vault-login-footer-link">Security Guarantee</span>
+          <span className="vault-login-footer-link">Contact</span>
         </nav>
       </footer>
     </section>

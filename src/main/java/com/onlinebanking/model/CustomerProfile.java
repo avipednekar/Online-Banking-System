@@ -1,7 +1,11 @@
 package com.onlinebanking.model;
 
+import com.onlinebanking.security.crypto.EncryptedStringConverter;
+import com.onlinebanking.util.IdentifierGenerator;
+import com.onlinebanking.util.NormalizationUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -11,6 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,11 +32,19 @@ public class CustomerProfile {
     @JoinColumn(name = "user_id", unique = true)
     private BankUser user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true, length = 64)
+    private String customerId;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String fullName;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String phoneNumber;
+
+    @Column(nullable = false, length = 64)
+    private String phoneNumberHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -57,6 +70,9 @@ public class CustomerProfile {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    private Long version;
+
     public CustomerProfile() {
     }
 
@@ -73,8 +89,10 @@ public class CustomerProfile {
                            String country,
                            LocalDate dateOfBirth) {
         this.user = user;
+        this.customerId = IdentifierGenerator.newId("CIF");
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
+        this.phoneNumberHash = NormalizationUtils.hashPhone(phoneNumber);
         this.gender = gender;
         this.occupation = occupation;
         this.address = new CustomerAddress(addressLine1, addressLine2, city, state, postalCode, country);
@@ -92,6 +110,10 @@ public class CustomerProfile {
         return user;
     }
 
+    public String getCustomerId() {
+        return customerId;
+    }
+
     public String getFullName() {
         return fullName;
     }
@@ -107,6 +129,7 @@ public class CustomerProfile {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+        this.phoneNumberHash = NormalizationUtils.hashPhone(phoneNumber);
         this.updatedAt = LocalDateTime.now();
     }
 

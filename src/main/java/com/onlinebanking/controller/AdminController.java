@@ -4,8 +4,10 @@ import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.ApiResponse;
+import com.onlinebanking.dto.TransferReceiptResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.service.AdminService;
+import com.onlinebanking.service.TransferService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,9 +25,11 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final TransferService transferService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, TransferService transferService) {
         this.adminService = adminService;
+        this.transferService = transferService;
     }
 
     @GetMapping("/overview")
@@ -62,6 +66,15 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Account opening request approved successfully",
                 adminService.approveAccountRequest(authentication.getName(), requestId)
+        ));
+    }
+
+    @PatchMapping("/transfers/{transferId}/approve")
+    public ResponseEntity<ApiResponse<TransferReceiptResponse>> approveTransfer(Authentication authentication,
+                                                                               @PathVariable String transferId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Transfer approved successfully",
+                transferService.approveTransfer(authentication.getName(), transferId)
         ));
     }
 }

@@ -3,6 +3,7 @@ package com.onlinebanking.config;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.UserRole;
 import com.onlinebanking.repository.BankUserRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Order(2)
+@ConditionalOnProperty(name = "app.admin.bootstrap-enabled", havingValue = "true")
 public class AdminBootstrap implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);
@@ -21,13 +23,13 @@ public class AdminBootstrap implements ApplicationRunner {
     private final BankUserRepository bankUserRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.admin.username:admin}")
+    @Value("${app.admin.username}")
     private String adminUsername;
 
-    @Value("${app.admin.email:admin@onlinebanking.local}")
+    @Value("${app.admin.email}")
     private String adminEmail;
 
-    @Value("${app.admin.password:Admin@123}")
+    @Value("${app.admin.password}")
     private String adminPassword;
 
     public AdminBootstrap(BankUserRepository bankUserRepository, PasswordEncoder passwordEncoder) {

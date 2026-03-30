@@ -2,6 +2,7 @@ package com.onlinebanking.config;
 
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.security.JwtAuthenticationFilter;
+import com.onlinebanking.security.PepperedArgon2PasswordEncoder;
 import com.onlinebanking.security.SecurityErrorResponseWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -75,8 +75,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder passwordEncoder(@org.springframework.beans.factory.annotation.Value("${app.security.password-pepper}") String pepper) {
+        return new PepperedArgon2PasswordEncoder(pepper);
     }
 
     @Bean

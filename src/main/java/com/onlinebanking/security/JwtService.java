@@ -28,16 +28,26 @@ public class JwtService {
     }
 
     public String generateToken(BankUser user) {
+        return generateToken(user, null, null);
+    }
+
+    public String generateToken(BankUser user, String sessionId, String tokenId) {
         Date issuedAt = new Date();
         Date expiry = new Date(issuedAt.getTime() + expirationMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getUsername())
                 .claim("role", user.getRole().name())
                 .issuedAt(issuedAt)
                 .expiration(expiry)
-                .signWith(secretKey)
-                .compact();
+                .signWith(secretKey);
+        if (sessionId != null) {
+            builder.claim("sid", sessionId);
+        }
+        if (tokenId != null) {
+            builder.id(tokenId);
+        }
+        return builder.compact();
     }
 
     public String extractUsername(String token) {
@@ -51,6 +61,10 @@ public class JwtService {
 
     public long getExpirationMs() {
         return expirationMs;
+    }
+
+    public String extractTokenId(String token) {
+        return extractClaims(token).getId();
     }
 
     private Claims extractClaims(String token) {

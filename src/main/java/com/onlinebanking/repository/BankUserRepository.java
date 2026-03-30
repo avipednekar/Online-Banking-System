@@ -10,7 +10,7 @@ public interface BankUserRepository extends JpaRepository<BankUser, Long> {
 
     boolean existsByUsernameIgnoreCase(String username);
 
-    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByEmailHash(String emailHash);
 
     Optional<BankUser> findByUsernameIgnoreCase(String username);
 

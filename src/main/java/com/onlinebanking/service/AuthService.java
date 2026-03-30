@@ -12,12 +12,13 @@ import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.model.UserRole;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
-import com.onlinebanking.security.JwtService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.onlinebanking.util.NormalizationUtils;
 
 @Service
 public class AuthService {
@@ -27,27 +28,38 @@ public class AuthService {
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final UserSessionService userSessionService;
     private final AuditService auditService;
+    private final int maxLoginAttempts;
+    private final int lockMinutes;
 
     public AuthService(BankUserRepository bankUserRepository,
                        CustomerProfileRepository customerProfileRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService,
-                       AuditService auditService) {
+                       UserSessionService userSessionService,
+                       AuditService auditService,
+                       @org.springframework.beans.factory.annotation.Value("${app.security.max-login-attempts:5}") int maxLoginAttempts,
+                       @org.springframework.beans.factory.annotation.Value("${app.security.lock-minutes:15}") int lockMinutes) {
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+        this.userSessionService = userSessionService;
         this.auditService = auditService;
+        this.maxLoginAttempts = maxLoginAttempts;
+        this.lockMinutes = lockMinutes;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (bankUserRepository.existsByUsernameIgnoreCase(request.username())) {
+        return register(request, null, null);
+    }
+
+    @Transactional
+    public AuthResponse register(RegisterRequest request, String ipAddress, String deviceFingerprint) {
+        if (bankUserRepository.existsByUsernameIgnoreCase(request.username().trim())) {
             throw new DuplicateResourceException("Username already exists");
         }
-        if (bankUserRepository.existsByEmailIgnoreCase(request.email())) {
+        if (bankUserRepository.existsByEmailHash(NormalizationUtils.hashEmail(request.email()))) {
             throw new DuplicateResourceException("Email already exists");
         }
 
@@ -74,20 +86,40 @@ public class AuthService {
         auditService.log(savedUser.getUsername(), "USER_REGISTERED", "BankUser", String.valueOf(savedUser.getId()),
                 "New customer registered");
         log.info("Registered new user {}", savedUser.getUsername());
-        return buildAuthResponse(savedUser, "User registered successfully");
+        return userSessionService.issueSession(savedUser, "User registered successfully", ipAddress, deviceFingerprint);
     }
 
     public AuthResponse login(LoginRequest request) {
+        return login(request, null, null);
+    }
+
+    @Transactional
+    public AuthResponse login(LoginRequest request, String ipAddress, String deviceFingerprint) {
         BankUser user = bankUserRepository.findByUsernameIgnoreCase(request.username().trim())
                 .orElseThrow(() -> new BusinessException("Invalid username or password"));
 
+        if (user.isLocked()) {
+            throw new BusinessException("Account is temporarily locked due to repeated failed logins");
+        }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            user.recordFailedLoginAttempt(maxLoginAttempts, lockMinutes);
+            bankUserRepository.save(user);
             log.warn("Failed login attempt for user {}", request.username().trim());
             throw new BusinessException("Invalid username or password");
         }
 
+        user.clearFailedLoginAttempts();
+        bankUserRepository.save(user);
         log.info("User {} authenticated successfully", user.getUsername());
-        return buildAuthResponse(user, "Login successful");
+        return userSessionService.issueSession(user, "Login successful", ipAddress, deviceFingerprint);
+    }
+
+    public AuthResponse refreshSession(String refreshToken) {
+        return userSessionService.refresh(refreshToken);
+    }
+
+    public void logout(String refreshToken) {
+        userSessionService.revoke(refreshToken);
     }
 
     public UserProfileResponse getCurrentUser(String username) {
@@ -96,6 +128,7 @@ public class AuthService {
         if (user.getRole() == UserRole.ADMIN) {
             return new UserProfileResponse(
                     user.getId(),
+                    "ADMIN",
                     user.getUsername(),
                     user.getEmail(),
                     user.getRole().name(),
@@ -117,6 +150,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
         return new UserProfileResponse(
                 user.getId(),
+                profile.getCustomerId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getRole().name(),
@@ -132,17 +166,6 @@ public class AuthService {
                 profile.getCountry(),
                 profile.getDateOfBirth().toString(),
                 profile.getKycStatus().name()
-        );
-    }
-
-    private AuthResponse buildAuthResponse(BankUser user, String message) {
-        return new AuthResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getRole().name(),
-                jwtService.generateToken(user),
-                jwtService.getExpirationMs(),
-                message
         );
     }
 }

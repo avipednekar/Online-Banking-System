@@ -1,6 +1,8 @@
 package com.onlinebanking.model;
 
+import com.onlinebanking.security.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -17,21 +19,28 @@ public class CustomerAddress {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String addressLine1;
 
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 1024)
     private String addressLine2;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String city;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String state;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String postalCode;
 
-    @Column(nullable = false)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String country;
 
     @Column(nullable = false)

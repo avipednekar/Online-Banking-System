@@ -2,6 +2,7 @@ package com.onlinebanking.dto;
 
 public record AdminCustomerResponse(
         Long userId,
+        String customerId,
         String username,
         String email,
         String fullName,

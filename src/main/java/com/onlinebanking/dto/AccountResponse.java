@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 
 public record AccountResponse(
         Long id,
+        String accountId,
         String accountNumber,
         AccountType accountType,
         AccountStatus status,

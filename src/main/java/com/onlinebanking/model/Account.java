@@ -11,7 +11,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
+import com.onlinebanking.util.IdentifierGenerator;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,6 +26,9 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, unique = true, length = 64)
+    private String accountId;
 
     @Column(nullable = false, unique = true)
     private String accountNumber;
@@ -48,6 +53,9 @@ public class Account {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    private Long version;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "owner_id")
     private BankUser owner;
@@ -59,6 +67,7 @@ public class Account {
     }
 
     public Account(String accountNumber, AccountType accountType, BigDecimal balance, BankUser owner) {
+        this.accountId = IdentifierGenerator.newId("ACC");
         this.accountNumber = accountNumber;
         this.accountType = accountType;
         this.status = AccountStatus.ACTIVE;
@@ -75,6 +84,10 @@ public class Account {
 
     public String getAccountNumber() {
         return accountNumber;
+    }
+
+    public String getAccountId() {
+        return accountId;
     }
 
     public void setAccountNumber(String accountNumber) {

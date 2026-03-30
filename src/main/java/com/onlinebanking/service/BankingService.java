@@ -2,6 +2,7 @@ package com.onlinebanking.service;
 
 import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
+import com.onlinebanking.dto.CreateTransferRequest;
 import com.onlinebanking.dto.CreateAccountRequest;
 import com.onlinebanking.dto.TransactionResponse;
 import com.onlinebanking.dto.TransferRequest;
@@ -12,6 +13,7 @@ import com.onlinebanking.model.AccountNumberSequence;
 import com.onlinebanking.model.AccountOpeningRequest;
 import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.AccountStatus;
+import com.onlinebanking.model.AccountBalance;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.LedgerEntry;
 import com.onlinebanking.model.LedgerEntryType;
@@ -24,6 +26,7 @@ import com.onlinebanking.model.KycStatus;
 import com.onlinebanking.repository.AccountOpeningRequestRepository;
 import com.onlinebanking.repository.AccountNumberSequenceRepository;
 import com.onlinebanking.repository.AccountRepository;
+import com.onlinebanking.repository.AccountBalanceRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
@@ -48,31 +51,37 @@ public class BankingService {
     private final AccountOpeningRequestRepository accountOpeningRequestRepository;
     private final AccountNumberSequenceRepository accountNumberSequenceRepository;
     private final AccountRepository accountRepository;
+    private final AccountBalanceRepository accountBalanceRepository;
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final TransactionRepository transactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final BeneficiaryService beneficiaryService;
     private final AuditService auditService;
+    private final TransferService transferService;
 
     public BankingService(AccountOpeningRequestRepository accountOpeningRequestRepository,
                           AccountNumberSequenceRepository accountNumberSequenceRepository,
                           AccountRepository accountRepository,
+                          AccountBalanceRepository accountBalanceRepository,
                           BankUserRepository bankUserRepository,
                           CustomerProfileRepository customerProfileRepository,
                           TransactionRepository transactionRepository,
                           LedgerEntryRepository ledgerEntryRepository,
                           BeneficiaryService beneficiaryService,
-                          AuditService auditService) {
+                          AuditService auditService,
+                          TransferService transferService) {
         this.accountOpeningRequestRepository = accountOpeningRequestRepository;
         this.accountNumberSequenceRepository = accountNumberSequenceRepository;
         this.accountRepository = accountRepository;
+        this.accountBalanceRepository = accountBalanceRepository;
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.beneficiaryService = beneficiaryService;
         this.auditService = auditService;
+        this.transferService = transferService;
     }
 
     @Transactional
@@ -145,7 +154,10 @@ public class BankingService {
         Account account = getOwnedAccount(username, accountNumber);
         ensureActiveAccount(account);
         BigDecimal normalizedAmount = validatePositiveAmount(amount);
-        account.setBalance(account.getBalance().add(normalizedAmount));
+        AccountBalance accountBalance = getRequiredAccountBalance(account.getAccountId());
+        accountBalance.credit(normalizedAmount);
+        accountBalanceRepository.save(accountBalance);
+        account.setBalance(accountBalance.getAvailableBalance());
         Account saved = accountRepository.save(account);
         Transaction transaction = saveTransaction(
                 saved,
@@ -168,11 +180,14 @@ public class BankingService {
         Account account = getOwnedAccount(username, accountNumber);
         ensureActiveAccount(account);
         BigDecimal normalizedAmount = validatePositiveAmount(amount);
-        BigDecimal newBalance = account.getBalance().subtract(normalizedAmount);
+        AccountBalance accountBalance = getRequiredAccountBalance(account.getAccountId());
+        BigDecimal newBalance = accountBalance.getAvailableBalance().subtract(normalizedAmount);
         if (newBalance.compareTo(MIN_BALANCE) < 0) {
             throw new BusinessException("Insufficient funds. Minimum balance of " + MIN_BALANCE + " must be maintained");
         }
 
+        accountBalance.debit(normalizedAmount);
+        accountBalanceRepository.save(accountBalance);
         account.setBalance(newBalance);
         Account saved = accountRepository.save(account);
         Transaction transaction = saveTransaction(
@@ -198,51 +213,19 @@ public class BankingService {
         }
 
         Account fromAccount = getOwnedAccount(username, request.fromAccountNumber());
-        Account toAccount = getAccountEntity(request.toAccountNumber());
-        ensureActiveAccount(fromAccount);
-        ensureActiveAccount(toAccount);
-        if (!fromAccount.getOwner().getUsername().equalsIgnoreCase(toAccount.getOwner().getUsername())) {
-            beneficiaryService.ensureActiveBeneficiary(username, request.toAccountNumber());
-        }
-        BigDecimal normalizedAmount = validatePositiveAmount(request.amount());
-
-        BigDecimal newSenderBalance = fromAccount.getBalance().subtract(normalizedAmount);
-        if (newSenderBalance.compareTo(MIN_BALANCE) < 0) {
-            throw new BusinessException("Insufficient funds. Minimum balance of " + MIN_BALANCE + " must be maintained");
-        }
-
-        fromAccount.setBalance(newSenderBalance);
-        toAccount.setBalance(toAccount.getBalance().add(normalizedAmount));
-
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
-
-        Transaction debitTransaction = saveTransaction(
-                fromAccount,
-                TransactionType.TRANSFER_OUT,
-                TransactionStatus.POSTED,
-                TransactionChannel.ONLINE_BANKING,
-                normalizedAmount,
-                toAccount.getAccountNumber(),
-                "Transfer to " + toAccount.getAccountNumber()
+        var beneficiary = beneficiaryService.getActiveBeneficiaryByAccountNumber(username, request.toAccountNumber());
+        transferService.initiateTransfer(
+                username,
+                new CreateTransferRequest(
+                        fromAccount.getAccountId(),
+                        beneficiary.getBeneficiaryId(),
+                        request.amount(),
+                        fromAccount.getCurrencyCode(),
+                        "Legacy transfer",
+                        TransactionChannel.ONLINE_BANKING
+                ),
+                UUID.randomUUID().toString()
         );
-        Transaction creditTransaction = saveTransaction(
-                toAccount,
-                TransactionType.TRANSFER_IN,
-                TransactionStatus.POSTED,
-                TransactionChannel.ONLINE_BANKING,
-                normalizedAmount,
-                fromAccount.getAccountNumber(),
-                "Transfer from " + fromAccount.getAccountNumber()
-        );
-
-        saveLedgerEntry(fromAccount, debitTransaction, LedgerEntryType.DEBIT, normalizedAmount,
-                "Transfer to " + toAccount.getAccountNumber());
-        saveLedgerEntry(toAccount, creditTransaction, LedgerEntryType.CREDIT, normalizedAmount,
-                "Transfer from " + fromAccount.getAccountNumber());
-        auditService.log(username, "TRANSFER_POSTED", "Account", fromAccount.getAccountNumber(),
-                "Transfer of " + normalizedAmount + " to " + toAccount.getAccountNumber());
-        log.info("Transfer posted from {} to {} by user {}", fromAccount.getAccountNumber(), toAccount.getAccountNumber(), username);
     }
 
     public List<TransactionResponse> getTransactions(String username, String accountNumber) {
@@ -321,6 +304,7 @@ public class BankingService {
         String generatedAccountNumber = generateAccountNumber(accountType);
         Account account = new Account(generatedAccountNumber, accountType, openingBalance, owner);
         Account savedAccount = accountRepository.save(account);
+        accountBalanceRepository.save(new AccountBalance(savedAccount, openingBalance));
         Transaction transaction = saveTransaction(
                 savedAccount,
                 TransactionType.DEPOSIT,
@@ -356,7 +340,7 @@ public class BankingService {
         return accountNumber + "-" + sequence + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    private synchronized String generateAccountNumber(com.onlinebanking.model.AccountType accountType) {
+    private String generateAccountNumber(com.onlinebanking.model.AccountType accountType) {
         AccountNumberSequence accountNumberSequence = accountNumberSequenceRepository.findById(accountType)
                 .orElseGet(() -> new AccountNumberSequence(accountType));
 
@@ -375,9 +359,15 @@ public class BankingService {
         return leadingDigit + randomDigits + String.format("%05d", nextSequence);
     }
 
+    private AccountBalance getRequiredAccountBalance(String accountId) {
+        return accountBalanceRepository.findByAccountAccountId(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account balance not found"));
+    }
+
     private AccountResponse toAccountResponse(Account account) {
         return new AccountResponse(
                 account.getId(),
+                account.getAccountId(),
                 account.getAccountNumber(),
                 account.getAccountType(),
                 account.getStatus(),

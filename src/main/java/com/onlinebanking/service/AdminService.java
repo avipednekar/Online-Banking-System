@@ -8,6 +8,7 @@ import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.AccountOpeningRequest;
 import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.BankUser;
+import com.onlinebanking.model.BeneficiaryStatus;
 import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.model.KycStatus;
 import com.onlinebanking.repository.AccountOpeningRequestRepository;
@@ -59,7 +60,7 @@ public class AdminService {
                 customerProfileRepository.countByKycStatus(KycStatus.REJECTED),
                 accountOpeningRequestRepository.countByStatus(AccountOpeningRequestStatus.PENDING),
                 accountRepository.count(),
-                beneficiaryRepository.countByActiveTrue()
+                beneficiaryRepository.countByStatus(BeneficiaryStatus.ACTIVE)
         );
     }
 
@@ -108,6 +109,7 @@ public class AdminService {
     private AdminCustomerResponse toCustomerResponse(CustomerProfile profile) {
         return new AdminCustomerResponse(
                 profile.getUser().getId(),
+                profile.getCustomerId(),
                 profile.getUser().getUsername(),
                 profile.getUser().getEmail(),
                 profile.getFullName(),

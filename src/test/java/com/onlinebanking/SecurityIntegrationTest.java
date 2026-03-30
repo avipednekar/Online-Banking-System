@@ -62,7 +62,52 @@ class SecurityIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("User registered successfully"))
                 .andExpect(jsonPath("$.data.token").isString())
+                .andExpect(jsonPath("$.data.refreshToken").isString())
+                .andExpect(jsonPath("$.data.sessionId").isString())
                 .andExpect(jsonPath("$.data.role").value("USER"));
+    }
+
+    @Test
+    void refreshRotatesSessionTokens() throws Exception {
+        MvcResult registration = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "noor",
+                                  "email": "noor@example.com",
+                                  "password": "Password@123",
+                                  "fullName": "Noor Ali",
+                                  "phoneNumber": "9876543211",
+                                  "gender": "FEMALE",
+                                  "occupation": "Manager",
+                                  "addressLine1": "10 Market Road",
+                                  "addressLine2": "Suite 3",
+                                  "city": "Mumbai",
+                                  "state": "Maharashtra",
+                                  "postalCode": "400001",
+                                  "country": "India",
+                                  "dateOfBirth": "1995-08-10"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        JsonNode authResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
+        String refreshToken = authResponse.get("data").get("refreshToken").asText();
+        String sessionId = authResponse.get("data").get("sessionId").asText();
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.token").isString())
+                .andExpect(jsonPath("$.data.refreshToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").value(org.hamcrest.Matchers.not(refreshToken)))
+                .andExpect(jsonPath("$.data.sessionId").value(sessionId));
     }
 
     @Test

@@ -1,6 +1,9 @@
 package com.onlinebanking.model;
 
+import com.onlinebanking.security.crypto.EncryptedStringConverter;
+import com.onlinebanking.util.NormalizationUtils;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,8 +30,12 @@ public class BankUser {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 1024)
     private String email;
+
+    @Column(nullable = false, unique = true, length = 64)
+    private String emailHash;
 
     @Column(nullable = false)
     private String passwordHash;
@@ -39,6 +46,11 @@ public class BankUser {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private int failedLoginAttempts;
+
+    private LocalDateTime lockedUntil;
 
     @OneToMany(mappedBy = "owner")
     private List<Account> accounts = new ArrayList<>();
@@ -54,10 +66,11 @@ public class BankUser {
 
     public BankUser(String username, String email, String passwordHash) {
         this.username = username;
-        this.email = email;
+        setEmail(email);
         this.passwordHash = passwordHash;
         this.role = UserRole.USER;
         this.createdAt = LocalDateTime.now();
+        this.failedLoginAttempts = 0;
     }
 
     public Long getId() {
@@ -77,7 +90,8 @@ public class BankUser {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = NormalizationUtils.normalizeEmail(email);
+        this.emailHash = NormalizationUtils.hashEmail(email);
     }
 
     public String getPasswordHash() {
@@ -98,6 +112,27 @@ public class BankUser {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getEmailHash() {
+        return emailHash;
+    }
+
+    public boolean isLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
+    }
+
+    public void recordFailedLoginAttempt(int maxAttempts, int lockMinutes) {
+        failedLoginAttempts++;
+        if (failedLoginAttempts >= maxAttempts) {
+            lockedUntil = LocalDateTime.now().plusMinutes(lockMinutes);
+            failedLoginAttempts = 0;
+        }
+    }
+
+    public void clearFailedLoginAttempts() {
+        failedLoginAttempts = 0;
+        lockedUntil = null;
     }
 
     public List<Account> getAccounts() {

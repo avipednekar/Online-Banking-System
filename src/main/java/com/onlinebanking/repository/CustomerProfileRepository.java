@@ -13,6 +13,8 @@ public interface CustomerProfileRepository extends JpaRepository<CustomerProfile
 
     Optional<CustomerProfile> findByUserId(Long userId);
 
+    Optional<CustomerProfile> findByCustomerId(String customerId);
+
     List<CustomerProfile> findAllByOrderByCreatedAtDesc();
 
     long countByKycStatus(KycStatus kycStatus);

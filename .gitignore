@@ -6,3 +6,8 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env
 frontend/Design/
+.vscode/
+
+# Secrets — never commit these
+.env
+src/main/resources/application-local.properties

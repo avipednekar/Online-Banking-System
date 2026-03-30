@@ -14,20 +14,43 @@ Spring Boot banking API with PostgreSQL-ready persistence, JWT authentication, l
 
 ## Backend setup
 
-Set these environment variables before running the backend:
+For local development, the backend now defaults to the `local` profile and can start without extra environment variables:
+
+```bash
+mvn spring-boot:run
+```
+
+If your shell or IDE previously set `SPRING_PROFILES_ACTIVE=prod`, either clear it or force the local profile explicitly:
+
+```powershell
+Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The local profile uses in-memory H2, local-only JWT/encryption secrets, and bootstraps an admin user:
+
+```text
+username: admin
+password: Admin@123
+```
+
+For production-style runs, activate the `prod` profile and set these environment variables first:
 
 ```powershell
 $env:DB_URL="jdbc:postgresql://localhost:5432/online_banking"
 $env:DB_USERNAME="postgres"
 $env:DB_PASSWORD="your_password"
 $env:JWT_SECRET="use-at-least-32-characters-for-your-jwt-secret"
-$env:JWT_EXPIRATION_MS="86400000"
+$env:JWT_EXPIRATION_MS="900000"
+$env:JWT_REFRESH_EXPIRATION_MS="604800000"
+$env:PASSWORD_PEPPER="server-side-password-pepper"
+$env:ENCRYPTION_MASTER_KEY="<base64-encoded-32-byte-key>"
 ```
 
-Run the backend from the project root:
+Run the production-style backend from the project root:
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
 Backend base URL:

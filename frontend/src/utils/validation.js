@@ -111,16 +111,24 @@ export function validateBalance(values) {
 export function validateTransfer(values) {
   const errors = {};
 
-  if (!hasValue(values.fromAccountNumber)) {
-    errors.fromAccountNumber = "Select a source account.";
+  if (!hasValue(values.fromAccountId)) {
+    errors.fromAccountId = "Select a source account.";
   }
 
-  if (!hasValue(values.toAccountNumber)) {
-    errors.toAccountNumber = "Provide a destination account.";
+  if (!hasValue(values.beneficiaryId)) {
+    errors.beneficiaryId = "Select a beneficiary.";
   }
 
   if (!isPositiveAmount(values.amount)) {
     errors.amount = "Transfer amount must be greater than zero.";
+  }
+
+  if (!hasValue(values.currency)) {
+    errors.currency = "Currency is required.";
+  }
+
+  if (!hasValue(values.remarks)) {
+    errors.remarks = "Please provide transfer remarks.";
   }
 
   return errors;

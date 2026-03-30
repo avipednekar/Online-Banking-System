@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { authService } from "../services/authService";
 
 const TOKEN_STORAGE_KEY = "bank_token";
+const REFRESH_TOKEN_STORAGE_KEY = "bank_refresh_token";
 const USER_STORAGE_KEY = "bank_user";
 
 const AuthContext = createContext(null);
@@ -33,12 +34,15 @@ function readStoredUser() {
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => readStoredValue(TOKEN_STORAGE_KEY));
+  const [refreshToken, setRefreshToken] = useState(() => readStoredValue(REFRESH_TOKEN_STORAGE_KEY));
   const [user, setUser] = useState(readStoredUser);
   const [authReady, setAuthReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const refreshTimerRef = useRef(null);
 
-  function persistSession(nextToken, nextUser) {
+  function persistSession(nextToken, nextRefreshToken, nextUser) {
     setToken(nextToken);
+    setRefreshToken(nextRefreshToken || "");
     setUser(nextUser);
 
     if (typeof window === "undefined") {
@@ -51,6 +55,12 @@ export function AuthProvider({ children }) {
       window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     }
 
+    if (nextRefreshToken) {
+      window.sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, nextRefreshToken);
+    } else {
+      window.sessionStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    }
+
     if (nextUser) {
       window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
     } else {
@@ -59,7 +69,35 @@ export function AuthProvider({ children }) {
   }
 
   function clearSession() {
-    persistSession("", null);
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+
+    persistSession("", "", null);
+  }
+
+  function scheduleTokenRefresh(expiresInMs) {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    const refreshDelayMs = Math.max((expiresInMs - 60) * 1000, 30000);
+
+    refreshTimerRef.current = setTimeout(async () => {
+      const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY);
+      if (!currentRefreshToken) {
+        return;
+      }
+
+      try {
+        const response = await authService.refresh(currentRefreshToken);
+        persistSession(response.token, response.refreshToken, user);
+        scheduleTokenRefresh(response.expiresIn);
+      } catch {
+        clearSession();
+      }
+    }, refreshDelayMs);
   }
 
   async function refreshProfile(activeToken = token) {
@@ -69,7 +107,8 @@ export function AuthProvider({ children }) {
     }
 
     const profile = await authService.getProfile(activeToken);
-    persistSession(activeToken, profile);
+    const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY) || refreshToken;
+    persistSession(activeToken, currentRefreshToken, profile);
     return profile;
   }
 
@@ -81,11 +120,15 @@ export function AuthProvider({ children }) {
           ? await authService.register(payload)
           : await authService.login(payload);
 
-      persistSession(response.token, {
+      persistSession(response.token, response.refreshToken, {
         userId: response.userId,
         username: response.username,
         role: response.role
       });
+
+      if (response.expiresIn) {
+        scheduleTokenRefresh(response.expiresIn);
+      }
 
       const profile = await refreshProfile(response.token);
       return {
@@ -105,8 +148,17 @@ export function AuthProvider({ children }) {
     return authenticate("register", payload);
   }
 
-  function logout() {
+  async function logout() {
+    const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY) || refreshToken;
     clearSession();
+
+    if (currentRefreshToken) {
+      try {
+        await authService.logout(currentRefreshToken);
+      } catch {
+        /* best-effort — session already cleared locally */
+      }
+    }
   }
 
   useEffect(() => {
@@ -135,12 +187,16 @@ export function AuthProvider({ children }) {
 
     return () => {
       cancelled = true;
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
     };
   }, []);
 
   const value = useMemo(
     () => ({
       token,
+      refreshToken,
       user,
       authReady,
       authLoading,
@@ -151,7 +207,7 @@ export function AuthProvider({ children }) {
       logout,
       refreshProfile
     }),
-    [token, user, authReady, authLoading]
+    [token, refreshToken, user, authReady, authLoading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,6 +4,9 @@ export const customerService = {
   getAccounts(token) {
     return apiRequest("/accounts", { token });
   },
+  getAccount(token, accountNumber) {
+    return apiRequest(`/accounts/${accountNumber}`, { token });
+  },
   getAccountRequests(token) {
     return apiRequest("/accounts/requests", { token });
   },
@@ -28,13 +31,6 @@ export const customerService = {
       body: { amount }
     });
   },
-  transfer(token, payload) {
-    return apiRequest("/accounts/transfer", {
-      method: "POST",
-      token,
-      body: payload
-    });
-  },
   getTransactions(token, accountNumber) {
     return apiRequest(`/accounts/${accountNumber}/transactions`, { token });
   },
@@ -49,6 +45,21 @@ export const customerService = {
       method: "POST",
       token,
       body: payload
+    });
+  },
+  activateBeneficiary(token, beneficiaryId, otpCode) {
+    return apiRequest(`/beneficiaries/${beneficiaryId}/activate`, {
+      method: "POST",
+      token,
+      body: { otpCode }
+    });
+  },
+  createTransfer(token, payload, idempotencyKey) {
+    return apiRequest("/transfers", {
+      method: "POST",
+      token,
+      body: payload,
+      headers: { "Idempotency-Key": idempotencyKey }
     });
   }
 };

@@ -15,5 +15,17 @@ export const authService = {
   },
   getProfile(token) {
     return apiRequest("/auth/me", { token });
+  },
+  refresh(refreshToken) {
+    return apiRequest("/auth/refresh", {
+      method: "POST",
+      body: { refreshToken }
+    });
+  },
+  logout(refreshToken) {
+    return apiRequest("/auth/logout", {
+      method: "POST",
+      body: { refreshToken }
+    });
   }
 };

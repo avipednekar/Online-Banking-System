@@ -22,5 +22,11 @@ export const adminService = {
       method: "PATCH",
       token
     });
+  },
+  approveTransfer(token, transferId) {
+    return apiRequest(`/admin/transfers/${transferId}/approve`, {
+      method: "PATCH",
+      token
+    });
   }
 };

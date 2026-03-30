@@ -17,6 +17,10 @@ import {
   validateTransfer
 } from "../utils/validation";
 
+function generateIdempotencyKey() {
+  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export function useCustomerWorkspace() {
   const { token, user, logout } = useAuth();
   const { notifyError, notifyInfo, notifySuccess } = useToast();
@@ -40,6 +44,16 @@ export function useCustomerWorkspace() {
   const totalBalance = useMemo(
     () => accounts.reduce((sum, account) => sum + Number(account.balance), 0),
     [accounts]
+  );
+
+  const activeBeneficiaries = useMemo(
+    () => beneficiaries.filter((b) => b.active || String(b.status).toUpperCase() === "ACTIVE"),
+    [beneficiaries]
+  );
+
+  const pendingBeneficiaries = useMemo(
+    () => beneficiaries.filter((b) => !b.active && String(b.status).toUpperCase() !== "ACTIVE"),
+    [beneficiaries]
   );
 
   function handleSessionError(error, title) {
@@ -245,12 +259,25 @@ export function useCustomerWorkspace() {
 
     tracker.startAction("transfer");
     try {
-      await customerService.transfer(token, {
-        ...transferForm.values,
-        amount: Number(transferForm.values.amount)
-      });
+      const idempotencyKey = generateIdempotencyKey();
+      const receipt = await customerService.createTransfer(
+        token,
+        {
+          fromAccountId: transferForm.values.fromAccountId,
+          beneficiaryId: transferForm.values.beneficiaryId,
+          amount: Number(transferForm.values.amount),
+          currency: transferForm.values.currency || "USD",
+          remarks: transferForm.values.remarks,
+          channel: transferForm.values.channel || "WEB"
+        },
+        idempotencyKey
+      );
       transferForm.reset(initialTransferForm);
-      notifySuccess("Transfer completed", "Funds were transferred successfully.");
+      const statusText = receipt?.status || "SUBMITTED";
+      notifySuccess(
+        "Transfer submitted",
+        `Transfer ${receipt?.transferId || ""} is ${statusText}. ${statusText === "PENDING_APPROVAL" ? "Awaiting admin approval." : ""}`
+      );
       await loadAccounts();
       if (selectedAccount) {
         await loadTransactions(selectedAccount);
@@ -293,11 +320,12 @@ export function useCustomerWorkspace() {
       beneficiaryForm.reset(initialBeneficiaryForm);
       setBeneficiaryLookup(null);
       setBeneficiaryLookupError("");
-      transferForm.setValues((current) => ({
-        ...current,
-        toAccountNumber: created.accountNumber
-      }));
-      notifySuccess("Beneficiary saved", `Beneficiary ${created.nickname} added successfully.`);
+      notifySuccess(
+        "Beneficiary saved",
+        created.active
+          ? `Beneficiary ${created.nickname} is active and ready for transfers.`
+          : `Beneficiary ${created.nickname} created. Enter OTP to activate.`
+      );
     } catch (error) {
       if (!handleSessionError(error, "Beneficiary creation failed")) {
         beneficiaryForm.setErrors(error.fields || {});
@@ -307,11 +335,32 @@ export function useCustomerWorkspace() {
     }
   }
 
+  async function activateBeneficiary(beneficiaryId, otpCode) {
+    tracker.startAction("activateBeneficiary");
+    try {
+      const activated = await customerService.activateBeneficiary(token, beneficiaryId, otpCode);
+      setBeneficiaries((current) =>
+        current.map((b) =>
+          (b.beneficiaryId === activated.beneficiaryId || b.id === activated.id) ? activated : b
+        )
+      );
+      notifySuccess("Beneficiary activated", `${activated.nickname} is now active and ready for transfers.`);
+      return activated;
+    } catch (error) {
+      handleSessionError(error, "Activation failed");
+      return null;
+    } finally {
+      tracker.finishAction("activateBeneficiary");
+    }
+  }
+
   return {
     user,
     accounts,
     accountRequests,
     beneficiaries,
+    activeBeneficiaries,
+    pendingBeneficiaries,
     transactions,
     selectedAccount,
     setSelectedAccount,
@@ -337,6 +386,7 @@ export function useCustomerWorkspace() {
     postBalanceAction,
     createTransfer,
     createBeneficiary,
+    activateBeneficiary,
     updateBeneficiaryField,
     verifyBeneficiaryAccount
   };

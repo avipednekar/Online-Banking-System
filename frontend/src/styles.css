@@ -4237,6 +4237,258 @@ select:focus {
   }
 }
 
+/* ── OTP Activation Modal ── */
+
+.vault-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 17, 58, 0.45);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 200ms ease;
+}
+
+.vault-modal-card {
+  width: min(28rem, 92vw);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 32px 64px -28px rgba(0, 17, 58, 0.55);
+  animation: modalSlideUp 280ms ease;
+  overflow: hidden;
+}
+
+.vault-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.4rem 1rem;
+  border-bottom: 1px solid rgba(223, 228, 236, 0.7);
+}
+
+.vault-modal-header h3 {
+  margin: 0;
+  color: var(--accent);
+  font-family: "Manrope", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.vault-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(242, 244, 246, 0.95);
+  color: #667389;
+}
+
+.vault-modal-close:hover {
+  background: rgba(221, 227, 235, 0.96);
+  color: var(--accent);
+}
+
+.vault-modal-body {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vault-modal-subtitle {
+  margin: 0;
+  color: #5e6980;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.vault-modal-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(242, 244, 246, 0.8);
+}
+
+.vault-modal-info-row span {
+  color: #7b8799;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.vault-modal-info-row strong {
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.vault-otp-input {
+  text-align: center;
+  font-size: 1.6rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.6em;
+  font-family: "Manrope", monospace;
+}
+
+/* ── Beneficiary Activation Button ── */
+
+.vault-dashboard-activate-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 193, 7, 0.15);
+  color: #8B6914;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 160ms ease;
+}
+
+.vault-dashboard-activate-button:hover {
+  background: rgba(255, 193, 7, 0.28);
+}
+
+/* ── Field Row (side by side) ── */
+
+.vault-dashboard-field-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.vault-dashboard-field-sm {
+  min-width: 6rem;
+  max-width: 7.5rem;
+}
+
+/* ── Grid Stack (vertical stack in right column) ── */
+
+.vault-dashboard-grid-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Field with action button ── */
+
+.vault-dashboard-field-with-action {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.vault-dashboard-field-with-action input {
+  flex: 1 1 auto;
+}
+
+.vault-dashboard-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgba(117, 141, 213, 0.14);
+  color: #4962aa;
+  transition: background 160ms ease;
+}
+
+.vault-dashboard-icon-button:hover {
+  background: rgba(117, 141, 213, 0.28);
+}
+
+/* ── Beneficiary Lookup Result ── */
+
+.vault-beneficiary-lookup-result {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(31, 206, 145, 0.1);
+  border: 1px solid rgba(31, 206, 145, 0.25);
+}
+
+.vault-beneficiary-lookup-result svg {
+  flex-shrink: 0;
+  color: #00a66f;
+}
+
+.vault-beneficiary-lookup-result strong {
+  display: block;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.vault-beneficiary-lookup-result span {
+  display: block;
+  margin-top: 0.15rem;
+  color: #5e7a6f;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* ── Field Hint ── */
+
+.vault-field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: #8a94a7;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ── Transaction ref cell ── */
+
+.vault-dashboard-ref-cell {
+  font-family: "Manrope", monospace;
+  font-size: 0.72rem !important;
+  color: #8a94a7 !important;
+  letter-spacing: 0.04em;
+}
+
+/* ── Card header with icon ── */
+
+.vault-dashboard-card-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.vault-dashboard-card-header h2 svg {
+  color: #758dd5;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;

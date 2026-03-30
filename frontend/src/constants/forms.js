@@ -26,9 +26,12 @@ export const initialAccountForm = {
 };
 
 export const initialTransferForm = {
-  fromAccountNumber: "",
-  toAccountNumber: "",
-  amount: "100.00"
+  fromAccountId: "",
+  beneficiaryId: "",
+  amount: "100.00",
+  currency: "USD",
+  remarks: "",
+  channel: "WEB"
 };
 
 export const initialBeneficiaryForm = {

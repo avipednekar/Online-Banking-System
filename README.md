@@ -7,8 +7,10 @@ Spring Boot banking API with PostgreSQL-ready persistence, JWT authentication, l
 - Java 17
 - Spring Boot 3
 - Spring Security with JWT
-- Spring Data JPA
-- PostgreSQL
+- Spring Data JPA (Hibernate with statement caching & batching)
+- PostgreSQL (Tuned for high concurrency)
+- HikariCP Connection Pool
+- Flyway Database Migrations
 - React + Vite
 - Ledger entries and audit logs
 
@@ -241,6 +243,15 @@ If a browser calls an API directly, some network path will always be visible in 
 - `customer_addresses` and `account_number_sequences` are straightforward BCNF-style relations because their determinants are candidate keys.
 - Startup schema reconciliation backfills `customer_addresses` from legacy inline columns so existing deployments can migrate without manual data repair.
 
+## Database optimization
+
+The database layer has been specifically tuned for production scale:
+- **Server Tuning**: `postgresql.conf` configured for customized memory limits (`shared_buffers`, `effective_cache_size`, `work_mem`) and SSD-aware query planner costs.
+- **Targeted Indexes**: Functional indexes (e.g. `LOWER(username)`) and join coverage added via Flyway migrations based on `EXPLAIN ANALYZE` results.
+- **Connection Pooling**: HikariCP configured with leak detection, prepared statement caching, and optimized lifetime maximums.
+- **Pagination**: All unbounded collections (Transaction history, Beneficiary list, Customer directories) are paginated natively through the database using Spring Data `Pageable` and returned with a standard `PagedResponse<T>`.
+- **JPA Batching**: Hibernate configured to batch DML operations (`order_inserts`, `order_updates`) for ledger and audit tables.
+
 ## Additional security you should add next
 
 - Refresh tokens with rotation and token revocation
@@ -248,6 +259,5 @@ If a browser calls an API directly, some network path will always be visible in 
 - Rate limiting on login and transfer endpoints
 - HTTPS only in deployment
 - Strong secret management with environment or vault tooling
-- Database migrations with Flyway or Liquibase
 - Audit logging for login, transfer, and failed auth events
 - Optional 2FA for high-risk actions

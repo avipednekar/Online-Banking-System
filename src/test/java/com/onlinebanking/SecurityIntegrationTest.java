@@ -2,17 +2,23 @@ package com.onlinebanking;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class SecurityIntegrationTest {
+
+    private static final String REFRESH_COOKIE_NAME = "bank_refresh_token";
 
     @Autowired
     private MockMvc mockMvc;
@@ -37,7 +45,7 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    void registerReturnsJwtToken() throws Exception {
+    void registerReturnsAccessTokenAndSetsRefreshCookie() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -59,16 +67,18 @@ class SecurityIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString(REFRESH_COOKIE_NAME + "=")))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("User registered successfully"))
                 .andExpect(jsonPath("$.data.token").isString())
-                .andExpect(jsonPath("$.data.refreshToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.data.sessionId").isString())
                 .andExpect(jsonPath("$.data.role").value("USER"));
     }
 
     @Test
-    void refreshRotatesSessionTokens() throws Exception {
+    void refreshRotatesSessionCookieAndRevokesPriorAccessToken() throws Exception {
         MvcResult registration = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -93,21 +103,71 @@ class SecurityIntegrationTest {
                 .andReturn();
 
         JsonNode authResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
-        String refreshToken = authResponse.get("data").get("refreshToken").asText();
+        String accessToken = authResponse.get("data").get("token").asText();
         String sessionId = authResponse.get("data").get("sessionId").asText();
+        Cookie refreshCookie = extractRefreshCookie(registration);
 
-        mockMvc.perform(post("/api/auth/refresh")
+        MvcResult refresh = mockMvc.perform(post("/api/auth/refresh").cookie(refreshCookie))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString(REFRESH_COOKIE_NAME + "=")))
+                .andExpect(jsonPath("$.data.token").isString())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(jsonPath("$.data.sessionId").value(sessionId))
+                .andReturn();
+
+        JsonNode refreshedAuthResponse = objectMapper.readTree(refresh.getResponse().getContentAsString());
+        String rotatedAccessToken = refreshedAuthResponse.get("data").get("token").asText();
+        String rotatedCookieHeader = refresh.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + rotatedAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("noor"));
+
+        assertNotNull(rotatedCookieHeader);
+        org.junit.jupiter.api.Assertions.assertTrue(!rotatedCookieHeader.contains(refreshCookie.getValue()));
+    }
+
+    @Test
+    void logoutRevokesCurrentAccessTokenImmediately() throws Exception {
+        MvcResult registration = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "refreshToken": "%s"
+                                  "username": "liam",
+                                  "email": "liam@example.com",
+                                  "password": "Password@123",
+                                  "fullName": "Liam Harper",
+                                  "phoneNumber": "9876543212",
+                                  "gender": "MALE",
+                                  "occupation": "Auditor",
+                                  "addressLine1": "45 River Lane",
+                                  "addressLine2": "Tower 2",
+                                  "city": "Pune",
+                                  "state": "Maharashtra",
+                                  "postalCode": "411001",
+                                  "country": "India",
+                                  "dateOfBirth": "1994-03-15"
                                 }
-                                """.formatted(refreshToken)))
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        JsonNode authResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
+        String accessToken = authResponse.get("data").get("token").asText();
+        Cookie refreshCookie = extractRefreshCookie(registration);
+
+        mockMvc.perform(post("/api/auth/logout").cookie(refreshCookie))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.token").isString())
-                .andExpect(jsonPath("$.data.refreshToken").isString())
-                .andExpect(jsonPath("$.data.refreshToken").value(org.hamcrest.Matchers.not(refreshToken)))
-                .andExpect(jsonPath("$.data.sessionId").value(sessionId));
+                .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -173,5 +233,17 @@ class SecurityIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fields.username").exists())
                 .andExpect(jsonPath("$.fields.password").exists());
+    }
+
+    private Cookie extractRefreshCookie(MvcResult result) {
+        String setCookieHeader = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        assertNotNull(setCookieHeader);
+
+        String cookiePair = setCookieHeader.split(";", 2)[0];
+        String cookieValue = cookiePair.substring((REFRESH_COOKIE_NAME + "=").length());
+
+        Cookie cookie = new Cookie(REFRESH_COOKIE_NAME, cookieValue);
+        cookie.setHttpOnly(true);
+        return cookie;
     }
 }

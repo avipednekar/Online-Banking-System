@@ -6,7 +6,7 @@ import { useToast } from "./useToast";
 import { collectFieldErrors } from "../utils/formatters";
 
 export function useAdminWorkspace() {
-  const { token, user, logout } = useAuth();
+  const { user, logout, getValidAccessToken } = useAuth();
   const { notifyError, notifyInfo, notifySuccess } = useToast();
   const tracker = useAsyncTracker();
   const [overview, setOverview] = useState(null);
@@ -52,7 +52,8 @@ export function useAdminWorkspace() {
     tracker.startAction("overview");
     setOverviewError("");
     try {
-      const data = await adminService.getOverview(token);
+      const accessToken = await getValidAccessToken();
+      const data = await adminService.getOverview(accessToken);
       setOverview(data);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load admin overview")) {
@@ -67,7 +68,8 @@ export function useAdminWorkspace() {
     tracker.startAction("customers");
     setCustomersError("");
     try {
-      const data = await adminService.getCustomers(token);
+      const accessToken = await getValidAccessToken();
+      const data = await adminService.getCustomers(accessToken);
       setCustomers(data);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load customer registry")) {
@@ -82,7 +84,8 @@ export function useAdminWorkspace() {
     tracker.startAction("accountRequests");
     setRequestsError("");
     try {
-      const data = await adminService.getAccountRequests(token);
+      const accessToken = await getValidAccessToken();
+      const data = await adminService.getAccountRequests(accessToken);
       setAccountRequests(data);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load account request queue")) {
@@ -107,7 +110,8 @@ export function useAdminWorkspace() {
   async function updateKyc(userId, kycStatus) {
     tracker.startAction("kyc");
     try {
-      const updated = await adminService.updateKyc(token, userId, kycStatus);
+      const accessToken = await getValidAccessToken();
+      const updated = await adminService.updateKyc(accessToken, userId, kycStatus);
       setCustomers((current) =>
         current.map((customer) => (customer.userId === updated.userId ? updated : customer))
       );
@@ -124,7 +128,8 @@ export function useAdminWorkspace() {
   async function approveAccountRequest(requestId) {
     tracker.startAction("approveAccountRequest");
     try {
-      const approved = await adminService.approveAccountRequest(token, requestId);
+      const accessToken = await getValidAccessToken();
+      const approved = await adminService.approveAccountRequest(accessToken, requestId);
       setAccountRequests((current) => current.filter((request) => request.id !== approved.id));
       await loadOverview();
       await loadCustomers();

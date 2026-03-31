@@ -8,6 +8,7 @@ import com.onlinebanking.dto.RegisterRequest;
 import com.onlinebanking.dto.UserProfileResponse;
 import com.onlinebanking.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,41 +18,53 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.onlinebanking.security.RefreshTokenCookieService;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenCookieService refreshTokenCookieService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          RefreshTokenCookieService refreshTokenCookieService) {
         this.authService = authService;
+        this.refreshTokenCookieService = refreshTokenCookieService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request,
-                                                              HttpServletRequest httpServletRequest) {
+                                                              HttpServletRequest httpServletRequest,
+                                                              HttpServletResponse httpServletResponse) {
         AuthResponse response = authService.register(request, resolveIpAddress(httpServletRequest), resolveDeviceFingerprint(httpServletRequest));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response.message(), response));
+        return buildAuthResponse(httpServletResponse, response, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
-                                                           HttpServletRequest httpServletRequest) {
+                                                           HttpServletRequest httpServletRequest,
+                                                           HttpServletResponse httpServletResponse) {
         AuthResponse response = authService.login(request, resolveIpAddress(httpServletRequest), resolveDeviceFingerprint(httpServletRequest));
-        return ResponseEntity.ok(ApiResponse.success(response.message(), response));
+        return buildAuthResponse(httpServletResponse, response, HttpStatus.OK);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        AuthResponse response = authService.refreshSession(request.refreshToken());
-        return ResponseEntity.ok(ApiResponse.success(response.message(), response));
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@RequestBody(required = false) RefreshTokenRequest request,
+                                                             HttpServletRequest httpServletRequest,
+                                                             HttpServletResponse httpServletResponse) {
+        AuthResponse response = authService.refreshSession(
+                refreshTokenCookieService.resolveRefreshToken(httpServletRequest, request)
+        );
+        return buildAuthResponse(httpServletResponse, response, HttpStatus.OK);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authService.logout(request.refreshToken());
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody(required = false) RefreshTokenRequest request,
+                                                    HttpServletRequest httpServletRequest,
+                                                    HttpServletResponse httpServletResponse) {
+        authService.logout(refreshTokenCookieService.resolveRefreshToken(httpServletRequest, request));
+        refreshTokenCookieService.clearRefreshTokenCookie(httpServletResponse);
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
 
@@ -74,5 +87,20 @@ public class AuthController {
     private String resolveDeviceFingerprint(HttpServletRequest request) {
         String deviceId = request.getHeader("X-Device-Id");
         return deviceId == null || deviceId.isBlank() ? "web-client" : deviceId.trim();
+    }
+
+    private ResponseEntity<ApiResponse<AuthResponse>> buildAuthResponse(HttpServletResponse httpServletResponse,
+                                                                        AuthResponse response,
+                                                                        HttpStatus status) {
+        if (response.refreshToken() != null && !response.refreshToken().isBlank()) {
+            refreshTokenCookieService.writeRefreshTokenCookie(
+                    httpServletResponse,
+                    response.refreshToken(),
+                    response.refreshExpiresIn()
+            );
+        }
+
+        return ResponseEntity.status(status)
+                .body(ApiResponse.success(response.message(), response.withoutRefreshToken()));
     }
 }

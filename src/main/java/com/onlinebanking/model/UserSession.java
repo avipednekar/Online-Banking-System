@@ -83,6 +83,10 @@ public class UserSession {
         return user;
     }
 
+    public boolean matchesAccessToken(String tokenId) {
+        return this.tokenId != null && this.tokenId.equals(tokenId);
+    }
+
     public boolean isActive() {
         return revokedAt == null && expiresAt.isAfter(LocalDateTime.now());
     }

@@ -16,13 +16,14 @@ import {
   validateBeneficiary,
   validateTransfer
 } from "../utils/validation";
+import { generateSecureId } from "../utils/security";
 
 function generateIdempotencyKey() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return `idem_${generateSecureId(18)}`;
 }
 
 export function useCustomerWorkspace() {
-  const { token, user, logout } = useAuth();
+  const { user, logout, getValidAccessToken } = useAuth();
   const { notifyError, notifyInfo, notifySuccess } = useToast();
   const tracker = useAsyncTracker();
   const accountForm = useForm(initialAccountForm);
@@ -71,7 +72,8 @@ export function useCustomerWorkspace() {
     tracker.startAction("accounts");
     setAccountsError("");
     try {
-      const data = await customerService.getAccounts(token);
+      const accessToken = await getValidAccessToken();
+      const data = await customerService.getAccounts(accessToken);
       setAccounts(data);
       const primaryAccount = data[0]?.accountNumber || "";
       setSelectedAccount((current) => current || primaryAccount);
@@ -91,7 +93,8 @@ export function useCustomerWorkspace() {
     tracker.startAction("beneficiaries");
     setBeneficiariesError("");
     try {
-      const data = await customerService.getBeneficiaries(token);
+      const accessToken = await getValidAccessToken();
+      const data = await customerService.getBeneficiaries(accessToken);
       setBeneficiaries(data);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load beneficiaries")) {
@@ -106,7 +109,8 @@ export function useCustomerWorkspace() {
     tracker.startAction("accountRequests");
     setAccountRequestsError("");
     try {
-      const data = await customerService.getAccountRequests(token);
+      const accessToken = await getValidAccessToken();
+      const data = await customerService.getAccountRequests(accessToken);
       setAccountRequests(data);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load account requests")) {
@@ -121,7 +125,8 @@ export function useCustomerWorkspace() {
     tracker.startAction("transactions");
     setTransactionsError("");
     try {
-      const data = await customerService.getTransactions(token, accountNumber);
+      const accessToken = await getValidAccessToken();
+      const data = await customerService.getTransactions(accessToken, accountNumber);
       setTransactions(data);
       setSelectedAccount(accountNumber);
     } catch (error) {
@@ -164,7 +169,8 @@ export function useCustomerWorkspace() {
     tracker.startAction("beneficiaryLookup");
     setBeneficiaryLookupError("");
     try {
-      const verified = await customerService.lookupBeneficiary(token, normalizedAccountNumber);
+      const accessToken = await getValidAccessToken();
+      const verified = await customerService.lookupBeneficiary(accessToken, normalizedAccountNumber);
       setBeneficiaryLookup(verified);
       beneficiaryForm.setValue("bankName", verified.bankName);
       return verified;
@@ -194,7 +200,8 @@ export function useCustomerWorkspace() {
 
     tracker.startAction("createAccount");
     try {
-      const created = await customerService.createAccount(token, {
+      const accessToken = await getValidAccessToken();
+      const created = await customerService.createAccount(accessToken, {
         ...accountForm.values,
         openingBalance: Number(accountForm.values.openingBalance)
       });
@@ -227,10 +234,11 @@ export function useCustomerWorkspace() {
 
     tracker.startAction("balance");
     try {
+      const accessToken = await getValidAccessToken();
       const updated =
         type === "deposit"
-          ? await customerService.deposit(token, selectedAccount, Number(amount))
-          : await customerService.withdraw(token, selectedAccount, Number(amount));
+          ? await customerService.deposit(accessToken, selectedAccount, Number(amount))
+          : await customerService.withdraw(accessToken, selectedAccount, Number(amount));
 
       setAccounts((current) =>
         current.map((account) =>
@@ -260,8 +268,9 @@ export function useCustomerWorkspace() {
     tracker.startAction("transfer");
     try {
       const idempotencyKey = generateIdempotencyKey();
+      const accessToken = await getValidAccessToken();
       const receipt = await customerService.createTransfer(
-        token,
+        accessToken,
         {
           fromAccountId: transferForm.values.fromAccountId,
           beneficiaryId: transferForm.values.beneficiaryId,
@@ -312,7 +321,8 @@ export function useCustomerWorkspace() {
 
     tracker.startAction("beneficiary");
     try {
-      const created = await customerService.createBeneficiary(token, {
+      const accessToken = await getValidAccessToken();
+      const created = await customerService.createBeneficiary(accessToken, {
         ...beneficiaryForm.values,
         bankName: verifiedAccount.bankName
       });
@@ -338,7 +348,8 @@ export function useCustomerWorkspace() {
   async function activateBeneficiary(beneficiaryId, otpCode) {
     tracker.startAction("activateBeneficiary");
     try {
-      const activated = await customerService.activateBeneficiary(token, beneficiaryId, otpCode);
+      const accessToken = await getValidAccessToken();
+      const activated = await customerService.activateBeneficiary(accessToken, beneficiaryId, otpCode);
       setBeneficiaries((current) =>
         current.map((b) =>
           (b.beneficiaryId === activated.beneficiaryId || b.id === activated.id) ? activated : b

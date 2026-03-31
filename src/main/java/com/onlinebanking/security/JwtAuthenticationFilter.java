@@ -2,6 +2,8 @@ package com.onlinebanking.security;
 
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.repository.BankUserRepository;
+import com.onlinebanking.service.UserSessionService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,13 +29,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final BankUserRepository bankUserRepository;
     private final SecurityErrorResponseWriter securityErrorResponseWriter;
+    private final UserSessionService userSessionService;
 
     public JwtAuthenticationFilter(JwtService jwtService,
                                    BankUserRepository bankUserRepository,
-                                   SecurityErrorResponseWriter securityErrorResponseWriter) {
+                                   SecurityErrorResponseWriter securityErrorResponseWriter,
+                                   UserSessionService userSessionService) {
         this.jwtService = jwtService;
         this.bankUserRepository = bankUserRepository;
         this.securityErrorResponseWriter = securityErrorResponseWriter;
+        this.userSessionService = userSessionService;
     }
 
     @Override
@@ -47,9 +52,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
+        Claims claims;
         String username;
         try {
-            username = jwtService.extractUsername(token);
+            claims = jwtService.parseClaims(token);
+            username = claims.getSubject();
         } catch (Exception exception) {
             log.warn("JWT parsing failed for path {}: {}", request.getRequestURI(), exception.getMessage());
             securityErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
@@ -58,7 +65,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             BankUser user = bankUserRepository.findByUsernameIgnoreCase(username).orElse(null);
-            if (user != null && jwtService.isTokenValid(token, user.getUsername())) {
+            String sessionId = claims.get("sid", String.class);
+            String tokenId = claims.getId();
+            if (user != null
+                    && jwtService.isTokenValid(claims, user.getUsername())
+                    && userSessionService.isAccessTokenSessionValid(sessionId, tokenId, user.getUsername())) {
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 user.getUsername(),
@@ -68,7 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
-                log.warn("JWT validation failed for user {}", username);
+                log.warn("JWT session validation failed for user {}", username);
                 securityErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED, "Invalid or expired token");
                 return;
             }

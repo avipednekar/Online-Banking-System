@@ -53,7 +53,6 @@ function LoginField({
 export default function LoginPage() {
   const { authLoading, loginForm, submitLogin } = useAuthForms();
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   return (
     <section className="vault-login-page">
@@ -146,15 +145,6 @@ export default function LoginPage() {
                   </button>
                 }
               />
-
-              <label className="vault-login-remember">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.target.checked)}
-                />
-                <span>Keep me logged in for 30 days</span>
-              </label>
 
               <button type="submit" className="vault-login-submit" disabled={authLoading}>
                 {authLoading ? "Authenticating..." : "Sign In to Vault"}

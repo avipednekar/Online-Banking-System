@@ -45,6 +45,7 @@ $env:JWT_EXPIRATION_MS="900000"
 $env:JWT_REFRESH_EXPIRATION_MS="604800000"
 $env:PASSWORD_PEPPER="server-side-password-pepper"
 $env:ENCRYPTION_MASTER_KEY="<base64-encoded-32-byte-key>"
+$env:ALLOWED_ORIGINS="https://your-frontend.example.com"
 ```
 
 Run the production-style backend from the project root:
@@ -68,6 +69,8 @@ Copy-Item frontend\.env.example frontend\.env
 ```
 
 The frontend now defaults to same-origin `/api` requests. In local development, Vite proxies `/api` to the backend target from `API_PROXY_TARGET`, so the browser does not need a hardcoded `http://localhost:8080` API host.
+
+Refresh sessions are now cookie-backed. Keep `VITE_API_BASE_URL=/api` unless you also explicitly allow a trusted API origin through `VITE_TRUSTED_API_ORIGINS` and the backend `ALLOWED_ORIGINS` setting.
 
 Run the frontend:
 

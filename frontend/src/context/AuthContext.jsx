@@ -1,70 +1,58 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { authService } from "../services/authService";
 
-const TOKEN_STORAGE_KEY = "bank_token";
-const REFRESH_TOKEN_STORAGE_KEY = "bank_refresh_token";
-const USER_STORAGE_KEY = "bank_user";
+const TOKEN_REFRESH_WINDOW_MS = 10_000;
+const LONG_LIVED_REFRESH_BUFFER_MS = 60_000;
+const SHORT_LIVED_REFRESH_BUFFER_MS = 10_000;
 
 const AuthContext = createContext(null);
-
-function readStoredValue(key) {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.sessionStorage.getItem(key) || "";
-}
-
-function readStoredUser() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = window.sessionStorage.getItem(USER_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
+let sharedRefreshPromise = null;
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => readStoredValue(TOKEN_STORAGE_KEY));
-  const [refreshToken, setRefreshToken] = useState(() => readStoredValue(REFRESH_TOKEN_STORAGE_KEY));
-  const [user, setUser] = useState(readStoredUser);
+  const [token, setToken] = useState("");
+  const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const refreshTimerRef = useRef(null);
+  const refreshInFlightRef = useRef(null);
+  const accessTokenExpiryRef = useRef(0);
 
-  function persistSession(nextToken, nextRefreshToken, nextUser) {
-    setToken(nextToken);
-    setRefreshToken(nextRefreshToken || "");
-    setUser(nextUser);
+  function scheduleTokenRefresh(expiresInMs) {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
 
-    if (typeof window === "undefined") {
+    const lifetimeMs = Number(expiresInMs || 0);
+    if (!Number.isFinite(lifetimeMs) || lifetimeMs <= 0 || typeof window === "undefined") {
       return;
     }
 
-    if (nextToken) {
-      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
-    } else {
-      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    const refreshDelayMs =
+      lifetimeMs > 120_000
+        ? Math.max(lifetimeMs - LONG_LIVED_REFRESH_BUFFER_MS, 1_000)
+        : Math.max(lifetimeMs - SHORT_LIVED_REFRESH_BUFFER_MS, 1_000);
+
+    refreshTimerRef.current = window.setTimeout(() => {
+      void refreshSession();
+    }, refreshDelayMs);
+  }
+
+  function applyAccessSession(authResponse, nextUser) {
+    setToken(authResponse?.token || "");
+    if (nextUser !== undefined) {
+      setUser(nextUser);
     }
 
-    if (nextRefreshToken) {
-      window.sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, nextRefreshToken);
-    } else {
-      window.sessionStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-    }
+    accessTokenExpiryRef.current = authResponse?.expiresIn
+      ? Date.now() + Number(authResponse.expiresIn)
+      : 0;
 
-    if (nextUser) {
-      window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
-    } else {
-      window.sessionStorage.removeItem(USER_STORAGE_KEY);
+    if (authResponse?.token && authResponse?.expiresIn) {
+      scheduleTokenRefresh(authResponse.expiresIn);
+    } else if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
     }
   }
 
@@ -74,42 +62,86 @@ export function AuthProvider({ children }) {
       refreshTimerRef.current = null;
     }
 
-    persistSession("", "", null);
+    accessTokenExpiryRef.current = 0;
+    setToken("");
+    setUser(null);
   }
 
-  function scheduleTokenRefresh(expiresInMs) {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
+  async function refreshSession({ clearOnFailure = true } = {}) {
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
     }
 
-    const refreshDelayMs = Math.max((expiresInMs - 60) * 1000, 30000);
-
-    refreshTimerRef.current = setTimeout(async () => {
-      const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY);
-      if (!currentRefreshToken) {
-        return;
-      }
-
+    if (sharedRefreshPromise) {
+      refreshInFlightRef.current = sharedRefreshPromise;
       try {
-        const response = await authService.refresh(currentRefreshToken);
-        persistSession(response.token, response.refreshToken, user);
-        scheduleTokenRefresh(response.expiresIn);
-      } catch {
+        const response = await sharedRefreshPromise;
+        applyAccessSession(response, (currentUser) =>
+          currentUser || {
+            userId: response.userId,
+            username: response.username,
+            role: response.role
+          }
+        );
+        return response;
+      } finally {
+        refreshInFlightRef.current = null;
+      }
+    }
+
+    const refreshPromise = (async () => {
+      const response = await authService.refresh();
+      applyAccessSession(response, (currentUser) =>
+        currentUser || {
+          userId: response.userId,
+          username: response.username,
+          role: response.role
+        }
+      );
+      return response;
+    })();
+
+    refreshInFlightRef.current = refreshPromise;
+    sharedRefreshPromise = refreshPromise;
+
+    try {
+      return await refreshPromise;
+    } catch (error) {
+      if (clearOnFailure) {
         clearSession();
       }
-    }, refreshDelayMs);
+      throw error;
+    } finally {
+      refreshInFlightRef.current = null;
+      sharedRefreshPromise = null;
+    }
+  }
+
+  async function getValidAccessToken() {
+    if (token && accessTokenExpiryRef.current - Date.now() > TOKEN_REFRESH_WINDOW_MS) {
+      return token;
+    }
+
+    const refreshed = await refreshSession();
+    return refreshed.token;
   }
 
   async function refreshProfile(activeToken = token) {
-    if (!activeToken) {
-      clearSession();
-      return null;
-    }
+    try {
+      const resolvedToken = activeToken || (await getValidAccessToken());
+      const profile = await authService.getProfile(resolvedToken);
+      setUser(profile);
+      return profile;
+    } catch (error) {
+      if (error.status !== 401) {
+        throw error;
+      }
 
-    const profile = await authService.getProfile(activeToken);
-    const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY) || refreshToken;
-    persistSession(activeToken, currentRefreshToken, profile);
-    return profile;
+      const refreshed = await refreshSession();
+      const profile = await authService.getProfile(refreshed.token);
+      setUser(profile);
+      return profile;
+    }
   }
 
   async function authenticate(mode, payload) {
@@ -120,15 +152,11 @@ export function AuthProvider({ children }) {
           ? await authService.register(payload)
           : await authService.login(payload);
 
-      persistSession(response.token, response.refreshToken, {
+      applyAccessSession(response, {
         userId: response.userId,
         username: response.username,
         role: response.role
       });
-
-      if (response.expiresIn) {
-        scheduleTokenRefresh(response.expiresIn);
-      }
 
       const profile = await refreshProfile(response.token);
       return {
@@ -149,15 +177,12 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    const currentRefreshToken = readStoredValue(REFRESH_TOKEN_STORAGE_KEY) || refreshToken;
     clearSession();
 
-    if (currentRefreshToken) {
-      try {
-        await authService.logout(currentRefreshToken);
-      } catch {
-        /* best-effort — session already cleared locally */
-      }
+    try {
+      await authService.logout();
+    } catch {
+      /* best-effort logout; local session is already cleared */
     }
   }
 
@@ -165,14 +190,10 @@ export function AuthProvider({ children }) {
     let cancelled = false;
 
     async function bootstrap() {
-      if (!token) {
-        setAuthReady(true);
-        return;
-      }
-
       setAuthLoading(true);
       try {
-        await refreshProfile(token);
+        const response = await refreshSession({ clearOnFailure: false });
+        await refreshProfile(response.token);
       } catch {
         clearSession();
       } finally {
@@ -196,7 +217,6 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       token,
-      refreshToken,
       user,
       authReady,
       authLoading,
@@ -205,9 +225,10 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
-      refreshProfile
+      refreshProfile,
+      getValidAccessToken
     }),
-    [token, refreshToken, user, authReady, authLoading]
+    [token, user, authReady, authLoading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

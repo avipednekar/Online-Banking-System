@@ -51,12 +51,11 @@ public class JwtService {
     }
 
     public String extractUsername(String token) {
-        return extractClaims(token).getSubject();
+        return parseClaims(token).getSubject();
     }
 
     public boolean isTokenValid(String token, String username) {
-        Claims claims = extractClaims(token);
-        return claims.getSubject().equals(username) && claims.getExpiration().after(new Date());
+        return isTokenValid(parseClaims(token), username);
     }
 
     public long getExpirationMs() {
@@ -64,14 +63,18 @@ public class JwtService {
     }
 
     public String extractTokenId(String token) {
-        return extractClaims(token).getId();
+        return parseClaims(token).getId();
     }
 
-    private Claims extractClaims(String token) {
+    public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public boolean isTokenValid(Claims claims, String username) {
+        return claims.getSubject().equals(username) && claims.getExpiration().after(new Date());
     }
 }

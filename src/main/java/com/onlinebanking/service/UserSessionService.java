@@ -58,6 +58,9 @@ public class UserSessionService {
 
     @Transactional
     public AuthResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BusinessException("Invalid refresh token");
+        }
         UserSession session = userSessionRepository.findByRefreshTokenHash(hashRefreshToken(refreshToken))
                 .orElseThrow(() -> new BusinessException("Invalid refresh token"));
         if (!session.isActive()) {
@@ -75,8 +78,22 @@ public class UserSessionService {
 
     @Transactional
     public void revoke(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
         userSessionRepository.findByRefreshTokenHash(hashRefreshToken(refreshToken))
                 .ifPresent(UserSession::revoke);
+    }
+
+    public boolean isAccessTokenSessionValid(String sessionId, String tokenId, String username) {
+        if (sessionId == null || sessionId.isBlank() || tokenId == null || tokenId.isBlank()) {
+            return false;
+        }
+
+        return userSessionRepository.findBySessionIdAndUsername(sessionId, username)
+                .filter(UserSession::isActive)
+                .filter(session -> session.matchesAccessToken(tokenId))
+                .isPresent();
     }
 
     private AuthResponse buildAuthResponse(BankUser user,

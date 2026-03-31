@@ -4,6 +4,7 @@ import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.ApiResponse;
+import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.TransferReceiptResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.service.AdminService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -38,8 +40,13 @@ public class AdminController {
     }
 
     @GetMapping("/customers")
-    public ResponseEntity<ApiResponse<List<AdminCustomerResponse>>> getCustomers() {
-        return ResponseEntity.ok(ApiResponse.success("Customers fetched successfully", adminService.getCustomers()));
+    public ResponseEntity<ApiResponse<PagedResponse<AdminCustomerResponse>>> getCustomers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Customers fetched successfully",
+                adminService.getCustomersPaged(page, Math.min(size, 100))
+        ));
     }
 
     @GetMapping("/account-requests")

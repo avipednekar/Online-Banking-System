@@ -4,6 +4,7 @@ import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.CreateTransferRequest;
 import com.onlinebanking.dto.CreateAccountRequest;
+import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.TransactionResponse;
 import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.exception.BusinessException;
@@ -34,6 +35,9 @@ import com.onlinebanking.repository.TransactionRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -233,6 +237,15 @@ public class BankingService {
         return transactionRepository.findByAccountAccountNumberOrderByCreatedAtDesc(accountNumber).stream()
                 .map(this::toTransactionResponse)
                 .toList();
+    }
+
+    public PagedResponse<TransactionResponse> getTransactionsPaged(String username, String accountNumber, int page, int size) {
+        getOwnedAccount(username, accountNumber);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return PagedResponse.from(
+                transactionRepository.findByAccountAccountNumber(accountNumber, pageable),
+                this::toTransactionResponse
+        );
     }
 
     private BankUser getAuthenticatedUser(String username) {

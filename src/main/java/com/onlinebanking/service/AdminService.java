@@ -3,6 +3,7 @@ package com.onlinebanking.service;
 import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
+import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.exception.ResourceNotFoundException;
 import com.onlinebanking.model.AccountOpeningRequest;
@@ -19,6 +20,8 @@ import com.onlinebanking.repository.CustomerProfileRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -68,6 +71,15 @@ public class AdminService {
         return customerProfileRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toCustomerResponse)
                 .toList();
+    }
+
+    public PagedResponse<AdminCustomerResponse> getCustomersPaged(int page, int size) {
+        return PagedResponse.from(
+                customerProfileRepository.findAll(
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+                ),
+                this::toCustomerResponse
+        );
     }
 
     public List<AccountOpeningRequestResponse> getPendingAccountRequests() {

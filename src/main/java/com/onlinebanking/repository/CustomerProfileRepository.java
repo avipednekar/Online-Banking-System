@@ -2,6 +2,8 @@ package com.onlinebanking.repository;
 
 import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.model.KycStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -16,6 +18,8 @@ public interface CustomerProfileRepository extends JpaRepository<CustomerProfile
     Optional<CustomerProfile> findByCustomerId(String customerId);
 
     List<CustomerProfile> findAllByOrderByCreatedAtDesc();
+
+    Page<CustomerProfile> findAll(Pageable pageable);
 
     long countByKycStatus(KycStatus kycStatus);
 }

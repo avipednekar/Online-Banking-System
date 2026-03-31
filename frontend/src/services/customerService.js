@@ -31,8 +31,8 @@ export const customerService = {
       body: { amount }
     });
   },
-  getTransactions(token, accountNumber) {
-    return apiRequest(`/accounts/${accountNumber}/transactions`, { token });
+  getTransactions(token, accountNumber, page = 0, size = 20) {
+    return apiRequest(`/accounts/${accountNumber}/transactions?page=${page}&size=${size}`, { token });
   },
   getBeneficiaries(token) {
     return apiRequest("/beneficiaries", { token });

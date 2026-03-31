@@ -5,6 +5,7 @@ import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.AmountRequest;
 import com.onlinebanking.dto.ApiResponse;
 import com.onlinebanking.dto.CreateAccountRequest;
+import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.TransactionResponse;
 import com.onlinebanking.dto.TransferRequest;
 import com.onlinebanking.service.BankingService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -92,11 +94,14 @@ public class AccountController {
     }
 
     @GetMapping("/accounts/{accountNumber}/transactions")
-    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getTransactions(Authentication authentication,
-                                                                                 @PathVariable String accountNumber) {
+    public ResponseEntity<ApiResponse<PagedResponse<TransactionResponse>>> getTransactions(
+            Authentication authentication,
+            @PathVariable String accountNumber,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Transactions fetched successfully",
-                bankingService.getTransactions(authentication.getName(), accountNumber)
+                bankingService.getTransactionsPaged(authentication.getName(), accountNumber, page, Math.min(size, 100))
         ));
     }
 }

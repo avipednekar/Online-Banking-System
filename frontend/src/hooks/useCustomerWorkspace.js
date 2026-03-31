@@ -127,7 +127,7 @@ export function useCustomerWorkspace() {
     try {
       const accessToken = await getValidAccessToken();
       const data = await customerService.getTransactions(accessToken, accountNumber);
-      setTransactions(data);
+      setTransactions(Array.isArray(data) ? data : data.content || []);
       setSelectedAccount(accountNumber);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load transaction history")) {

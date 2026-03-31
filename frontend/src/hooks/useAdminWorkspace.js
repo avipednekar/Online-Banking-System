@@ -70,7 +70,7 @@ export function useAdminWorkspace() {
     try {
       const accessToken = await getValidAccessToken();
       const data = await adminService.getCustomers(accessToken);
-      setCustomers(data);
+      setCustomers(Array.isArray(data) ? data : data.content || []);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load customer registry")) {
         setCustomersError(error.message || "Unable to load customer registry.");

@@ -97,6 +97,15 @@ public class AdminService {
 
         profile.setKycStatus(request.kycStatus());
         CustomerProfile savedProfile = customerProfileRepository.save(profile);
+
+        if (request.kycStatus() == KycStatus.VERIFIED) {
+            BankUser admin = bankUserRepository.findByUsernameIgnoreCase(adminUsername)
+                    .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+            accountOpeningRequestRepository.findByRequesterUsernameIgnoreCaseOrderByCreatedAtDesc(user.getUsername()).stream()
+                    .filter(req -> req.getStatus() == AccountOpeningRequestStatus.PENDING)
+                    .forEach(req -> bankingService.approveAccountOpeningRequest(admin, req));
+        }
+
         auditService.log(
                 adminUsername,
                 "KYC_STATUS_UPDATED",

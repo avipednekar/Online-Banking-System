@@ -8,17 +8,30 @@ import { Panel } from "../ui/Panel";
 import { SectionHeader } from "../ui/SectionHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 
+function getActionLabel(status) {
+  const normalized = String(status || "").toUpperCase();
+  if (normalized === "APPROVED") {
+    return "Approved";
+  }
+  if (normalized === "REJECTED") {
+    return "Rejected";
+  }
+  return "Approve account";
+}
+
 export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
   requests,
   isLoading,
   error,
+  isMutating,
   onRefresh,
   onApprove
 }) {
   return (
-    <Panel>
+    <Panel className="vault-admin-panel vault-admin-approvals-panel">
       <SectionHeader
-        title="Pending account requests"
+        title="Pending Approvals"
+        subtitle="Customer account requests awaiting explicit administrative approval."
         action={
           <SubmitButton
             type="button"
@@ -27,13 +40,15 @@ export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
             idleLabel="Refresh queue"
             loadingLabel="Refreshing..."
             onClick={onRefresh}
-            disabled={isLoading}
+            disabled={isLoading || isMutating}
           />
         }
       />
+
       {isLoading ? (
         <LoadingState compact title="Loading requests" message="Fetching account requests awaiting approval." />
       ) : null}
+
       {error ? (
         <SectionErrorState
           message={error}
@@ -44,35 +59,52 @@ export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
           }
         />
       ) : null}
+
       {!isLoading && !error && requests.length === 0 ? (
         <EmptyState
           title="No pending requests"
           message="New verified customer account requests will appear here for approval."
         />
       ) : null}
-      <div className="transaction-list">
-        {requests.map((request) => (
-          <article key={request.id} className="admin-customer-card">
-            <div className="admin-customer-header">
-              <div>
-                <span>{request.requesterUsername}</span>
-                <strong>{request.requesterFullName}</strong>
-                <p>
-                  {request.accountType} | {formatCurrency(request.openingBalance)}
-                </p>
-              </div>
-              <StatusBadge status={request.status} />
-            </div>
-            <p>KYC status: {request.kycStatus}</p>
-            <p>Submitted: {formatDate(request.createdAt)}</p>
-            <div className="button-row">
-              <button type="button" onClick={() => onApprove(request.id)} disabled={isLoading}>
-                Approve and open
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+
+      {!isLoading && !error && requests.length > 0 ? (
+        <div className="vault-admin-request-grid">
+          {requests.map((request) => {
+            const isPending = String(request.status || "").toUpperCase() === "PENDING";
+
+            return (
+              <article key={request.id} className="vault-admin-request-card">
+                <div className="vault-admin-request-card-head">
+                  <div>
+                    <span>{request.requesterUsername}</span>
+                    <strong>{request.requesterFullName}</strong>
+                  </div>
+                  <StatusBadge status={request.status} />
+                </div>
+
+                <div className="vault-admin-request-card-body">
+                  <p>
+                    {request.accountType} account for {formatCurrency(request.openingBalance)}
+                  </p>
+                  <p>Submitted {formatDate(request.createdAt)}</p>
+                  <p>KYC status: {request.kycStatus}</p>
+                </div>
+
+                <div className="vault-admin-request-card-actions">
+                  <button
+                    type="button"
+                    className="vault-admin-primary-button"
+                    onClick={() => onApprove(request.id)}
+                    disabled={!isPending || isMutating}
+                  >
+                    {getActionLabel(request.status)}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
     </Panel>
   );
 });

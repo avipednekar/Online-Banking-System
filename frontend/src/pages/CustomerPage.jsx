@@ -108,63 +108,6 @@ function EmptyState({ icon: Icon, title, description }) {
   );
 }
 
-function OtpActivationModal({ beneficiary, onActivate, onClose, isPending }) {
-  const [otpCode, setOtpCode] = useState("");
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    if (otpCode.length === 6) {
-      onActivate(beneficiary.beneficiaryId, otpCode);
-    }
-  }
-
-  return (
-    <div className="vault-modal-overlay" onClick={onClose}>
-      <div className="vault-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="vault-modal-header">
-          <h3>Activate Beneficiary</h3>
-          <button type="button" className="vault-modal-close" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className="vault-modal-body">
-          <p className="vault-modal-subtitle">
-            Enter the 6-digit verification code to activate <strong>{beneficiary.nickname}</strong>.
-          </p>
-
-          <div className="vault-modal-info-row">
-            <span>Account</span>
-            <strong>**** {formatAccountAlias(beneficiary.accountNumber)}</strong>
-          </div>
-          <div className="vault-modal-info-row">
-            <span>Bank</span>
-            <strong>{beneficiary.bankName}</strong>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <label className="vault-dashboard-field is-wide">
-              <span>OTP Code</span>
-              <input
-                type="text"
-                maxLength={6}
-                pattern="[0-9]{6}"
-                inputMode="numeric"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                autoFocus
-                className="vault-otp-input"
-              />
-            </label>
-            <button type="submit" className="vault-dashboard-primary-button" disabled={otpCode.length !== 6 || isPending}>
-              {isPending ? "Verifying..." : "Activate Beneficiary"}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function TransferCard({ workspace }) {
   return (
@@ -420,19 +363,10 @@ function AddBeneficiaryCard({ workspace }) {
   );
 }
 
-function BeneficiaryRow({ beneficiary, index, workspace }) {
-  const [showOtp, setShowOtp] = useState(false);
+function BeneficiaryRow({ beneficiary, index }) {
   const isActive = beneficiary.active || String(beneficiary.status).toUpperCase() === "ACTIVE";
 
-  async function handleActivate(beneficiaryId, otpCode) {
-    const result = await workspace.activateBeneficiary(beneficiaryId, otpCode);
-    if (result) {
-      setShowOtp(false);
-    }
-  }
-
   return (
-    <>
       <article className="vault-dashboard-beneficiary">
         <div className={`vault-dashboard-beneficiary-avatar tone-${index % 4}`}>
           {getInitials(beneficiary.nickname || beneficiary.accountHolderName)}
@@ -448,24 +382,9 @@ function BeneficiaryRow({ beneficiary, index, workspace }) {
             <Check size={12} /> Active
           </span>
         ) : (
-          <button
-            type="button"
-            className="vault-dashboard-activate-button"
-            onClick={() => setShowOtp(true)}
-          >
-            <KeyRound size={12} /> Activate
-          </button>
+          <span className="vault-dashboard-status-badge is-pending">Pending</span>
         )}
       </article>
-      {showOtp ? (
-        <OtpActivationModal
-          beneficiary={beneficiary}
-          onActivate={handleActivate}
-          onClose={() => setShowOtp(false)}
-          isPending={workspace.tracker.isPending("activateBeneficiary")}
-        />
-      ) : null}
-    </>
   );
 }
 

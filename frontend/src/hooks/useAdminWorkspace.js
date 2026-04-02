@@ -17,6 +17,15 @@ export function useAdminWorkspace() {
   const [customersError, setCustomersError] = useState("");
   const [requestsError, setRequestsError] = useState("");
   const deferredSearch = useDeferredValue(searchTerm);
+  const pendingRequestByCustomerId = useMemo(
+    () =>
+      new Map(
+        accountRequests
+          .filter((request) => String(request.status || "").toUpperCase() === "PENDING")
+          .map((request) => [request.requesterId, request])
+      ),
+    [accountRequests]
+  );
 
   const filteredCustomers = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -36,6 +45,23 @@ export function useAdminWorkspace() {
         .some((value) => String(value).toLowerCase().includes(query))
     );
   }, [customers, deferredSearch]);
+
+  function getPendingRequestForCustomer(userId) {
+    return pendingRequestByCustomerId.get(userId) || null;
+  }
+
+  function hasPendingAccountRequest(userId) {
+    return pendingRequestByCustomerId.has(userId);
+  }
+
+  function isKycPending(customer) {
+    return String(customer?.kycStatus || "").toUpperCase() === "PENDING";
+  }
+
+  function isKycFinal(customer) {
+    const status = String(customer?.kycStatus || "").toUpperCase();
+    return status === "VERIFIED" || status === "REJECTED";
+  }
 
   function handleSessionError(error, title) {
     if (error.status === 401) {
@@ -146,6 +172,7 @@ export function useAdminWorkspace() {
     overview,
     customers,
     accountRequests,
+    pendingRequestByCustomerId,
     filteredCustomers,
     searchTerm,
     setSearchTerm,
@@ -158,6 +185,10 @@ export function useAdminWorkspace() {
     loadCustomers,
     loadAccountRequests,
     updateKyc,
-    approveAccountRequest
+    approveAccountRequest,
+    getPendingRequestForCustomer,
+    hasPendingAccountRequest,
+    isKycPending,
+    isKycFinal
   };
 }

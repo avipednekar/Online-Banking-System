@@ -1,29 +1,9 @@
-import { navigateTo } from "../../utils/router";
-
-function isModifiedEvent(event) {
-  return event.metaKey || event.altKey || event.ctrlKey || event.shiftKey;
-}
+import { Link } from "react-router-dom";
 
 export function RouteLink({ to, onClick, children, ...rest }) {
-  function handleClick(event) {
-    onClick?.(event);
-
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      isModifiedEvent(event) ||
-      rest.target === "_blank"
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    navigateTo(to);
-  }
-
   return (
-    <a href={to} onClick={handleClick} {...rest}>
+    <Link to={to} onClick={onClick} {...rest}>
       {children}
-    </a>
+    </Link>
   );
 }

@@ -332,9 +332,7 @@ export function useCustomerWorkspace() {
       setBeneficiaryLookupError("");
       notifySuccess(
         "Beneficiary saved",
-        created.active
-          ? `Beneficiary ${created.nickname} is active and ready for transfers.`
-          : `Beneficiary ${created.nickname} created. Enter OTP to activate.`
+        `Beneficiary ${created.nickname} is active and ready for transfers.`
       );
     } catch (error) {
       if (!handleSessionError(error, "Beneficiary creation failed")) {
@@ -345,25 +343,6 @@ export function useCustomerWorkspace() {
     }
   }
 
-  async function activateBeneficiary(beneficiaryId, otpCode) {
-    tracker.startAction("activateBeneficiary");
-    try {
-      const accessToken = await getValidAccessToken();
-      const activated = await customerService.activateBeneficiary(accessToken, beneficiaryId, otpCode);
-      setBeneficiaries((current) =>
-        current.map((b) =>
-          (b.beneficiaryId === activated.beneficiaryId || b.id === activated.id) ? activated : b
-        )
-      );
-      notifySuccess("Beneficiary activated", `${activated.nickname} is now active and ready for transfers.`);
-      return activated;
-    } catch (error) {
-      handleSessionError(error, "Activation failed");
-      return null;
-    } finally {
-      tracker.finishAction("activateBeneficiary");
-    }
-  }
 
   return {
     user,
@@ -397,7 +376,6 @@ export function useCustomerWorkspace() {
     postBalanceAction,
     createTransfer,
     createBeneficiary,
-    activateBeneficiary,
     updateBeneficiaryField,
     verifyBeneficiaryAccount
   };

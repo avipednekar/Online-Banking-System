@@ -81,23 +81,8 @@ public class BeneficiaryService {
                 request.nickname().trim(),
                 normalizedAccountNumber
         );
-        String activationCode = generateActivationCode();
-        LocalDateTime activationReadyAt = LocalDateTime.now().plusMinutes(coolingPeriodMinutes);
-        beneficiary.startActivationWindow(
-                SensitiveDataCrypto.lookupHash(activationCode),
-                activationReadyAt,
-                activationReadyAt.plusMinutes(activationWindowMinutes)
-        );
-        if (autoActivate) {
-            beneficiary.activate();
-        }
+        beneficiary.activate();
         beneficiary = beneficiaryRepository.save(beneficiary);
-        outboxService.enqueue(
-                "Beneficiary",
-                beneficiary.getBeneficiaryId(),
-                "BENEFICIARY_ACTIVATION_CODE_CREATED",
-                "{\"beneficiaryId\":\"" + beneficiary.getBeneficiaryId() + "\",\"activationCode\":\"" + activationCode + "\"}"
-        );
 
         auditService.log(username, "BENEFICIARY_CREATED", "Beneficiary", String.valueOf(beneficiary.getId()),
                 "Beneficiary added for account " + beneficiary.getAccountNumber());
@@ -120,15 +105,6 @@ public class BeneficiaryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Beneficiary not found"));
         if (beneficiary.isActive()) {
             return toResponse(beneficiary, resolveAccountHolderName(beneficiary.getAccountNumber()));
-        }
-        if (beneficiary.getActivationReadyAt() != null && beneficiary.getActivationReadyAt().isAfter(LocalDateTime.now())) {
-            throw new BusinessException("Beneficiary is still in cooling period");
-        }
-        if (beneficiary.getActivationExpiresAt() != null && beneficiary.getActivationExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException("Beneficiary activation code has expired");
-        }
-        if (!SensitiveDataCrypto.lookupHash(request.otpCode()).equals(beneficiary.getActivationCodeHash())) {
-            throw new BusinessException("Invalid beneficiary activation code");
         }
         beneficiary.activate();
         Beneficiary saved = beneficiaryRepository.save(beneficiary);

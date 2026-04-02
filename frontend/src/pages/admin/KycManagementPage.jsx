@@ -9,7 +9,7 @@ export default function KycManagementPage() {
   );
 
   return (
-    <section className="vault-admin-page">
+    <section className="vault-admin-page min-w-0">
       <CustomerRegistryPanel
         title="KYC Management"
         subtitle="Actionable customer verification queue prioritized for completion."

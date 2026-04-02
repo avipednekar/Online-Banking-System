@@ -24,16 +24,20 @@ function getVerificationRate(overview) {
 
 function SummaryCard({ icon: Icon, label, value, detail, tone = "default", trend }) {
   return (
-    <article className={`vault-admin-kpi-card tone-${tone}`}>
+    <article
+      className={`vault-admin-kpi-card tone-${tone} flex h-full min-w-0 flex-col rounded-[22px] p-4 sm:p-4`}
+    >
       <div className="vault-admin-kpi-top">
         <div className="vault-admin-kpi-icon">
           <Icon size={18} />
         </div>
         {trend ? <span className="vault-admin-kpi-trend">{trend}</span> : null}
       </div>
-      <p className="vault-admin-kpi-label">{label}</p>
-      <h3 className="vault-admin-kpi-value">{value}</h3>
-      <p className="vault-admin-kpi-detail">{detail}</p>
+      <div className="vault-admin-kpi-copy">
+        <p className="vault-admin-kpi-label">{label}</p>
+        <h3 className="vault-admin-kpi-value">{value}</h3>
+        <p className="vault-admin-kpi-detail">{detail}</p>
+      </div>
     </article>
   );
 }
@@ -45,7 +49,7 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
   onRefresh
 }) {
   return (
-    <Panel className="vault-admin-panel vault-admin-overview-panel">
+    <Panel className="vault-admin-panel vault-admin-overview-panel min-w-0 rounded-[24px] p-4 sm:p-4">
       <SectionHeader
         title="Institution overview"
         subtitle="Real-time visibility into operational load, KYC posture, and onboarding approvals."
@@ -78,7 +82,7 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
       ) : null}
 
       {!isLoading && !error ? (
-        <div className="vault-admin-kpi-grid">
+        <div className="vault-admin-kpi-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             icon={WalletCards}
             label="Total Accounts"

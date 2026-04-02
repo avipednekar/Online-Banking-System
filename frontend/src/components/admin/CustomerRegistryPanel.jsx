@@ -40,6 +40,21 @@ function RequestStatusBadge({ status }) {
   );
 }
 
+function CustomerUserCell({ customer }) {
+  return (
+    <div className="vault-admin-user-cell">
+      <div className="vault-admin-registry-avatar">
+        {getInitials(customer.fullName || customer.username)}
+      </div>
+      <div className="vault-admin-registry-copy">
+        <strong>{customer.fullName}</strong>
+        <span>{customer.email}</span>
+        <small>@{customer.username}</small>
+      </div>
+    </div>
+  );
+}
+
 function KycActionState({ customer, actionable }) {
   const status = String(customer?.kycStatus || "").toUpperCase();
   const stateClass =
@@ -95,7 +110,7 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   isKycPending
 }) {
   return (
-    <Panel className="vault-admin-panel vault-admin-registry-panel">
+    <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
       <SectionHeader
         title={title}
         subtitle={subtitle}
@@ -112,7 +127,7 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
         }
       />
 
-      <div className="vault-admin-registry-toolbar">
+      <div className="vault-admin-registry-toolbar min-w-0">
         <FormField
           label="Search customers"
           name="search"
@@ -145,115 +160,124 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
       ) : null}
 
       {!isLoading && !error && customers.length > 0 ? (
-        <>
-          <div className="vault-admin-registry-head" aria-hidden="true">
-            <span>User Information</span>
-            <span>Contact &amp; DOB</span>
-            <span>Physical Address</span>
-            <span>KYC Status</span>
-            <span>{actionColumnLabel}</span>
-          </div>
+        <div className="vault-admin-table-shell w-full overflow-x-auto">
+          <table className="vault-admin-data-table vault-admin-customer-table w-full">
+            <colgroup>
+              <col className="vault-admin-col-user" />
+              <col className="vault-admin-col-contact" />
+              <col className="vault-admin-col-address" />
+              <col className="vault-admin-col-status" />
+              <col className="vault-admin-col-actions" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">User Information</th>
+                <th scope="col">Contact &amp; DOB</th>
+                <th scope="col">Physical Address</th>
+                <th scope="col">KYC Status</th>
+                <th scope="col" className="is-actions">
+                  {actionColumnLabel}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((customer) => {
+                const relatedRequest = getPendingRequestForCustomer(customer.userId);
+                const kycPending = isKycPending(customer);
 
-          <div className="vault-admin-registry-list">
-            {customers.map((customer) => {
-              const relatedRequest = getPendingRequestForCustomer(customer.userId);
-              const kycPending = isKycPending(customer);
-
-              return (
-                <article key={customer.userId} className="vault-admin-registry-card">
-                  <div className="vault-admin-registry-field vault-admin-registry-user" data-label="User Information">
-                    <div className="vault-admin-registry-avatar">
-                      {getInitials(customer.fullName || customer.username)}
-                    </div>
-                    <div className="vault-admin-registry-copy">
-                      <strong>{customer.fullName}</strong>
-                      <span>{customer.email}</span>
-                      <small>@{customer.username}</small>
-                    </div>
-                  </div>
-
-                  <div className="vault-admin-registry-field" data-label="Contact & DOB">
-                    <strong>{customer.phoneNumber || "No phone number"}</strong>
-                    <span>{formatDate(customer.dateOfBirth)}</span>
-                    <small>{customer.occupation || "No occupation listed"}</small>
-                  </div>
-
-                  <div className="vault-admin-registry-field" data-label="Physical Address">
-                    <strong>{formatAddress(customer) || "No address captured"}</strong>
-                    <span>{customer.gender || "Gender not provided"}</span>
-                  </div>
-
-                  <div className="vault-admin-registry-field vault-admin-registry-status" data-label="KYC Status">
-                    <StatusBadge status={customer.kycStatus} />
-                    {showRequestMeta && relatedRequest ? (
-                      <div className="vault-admin-request-meta">
-                        <RequestStatusBadge status={relatedRequest.status} />
-                        <small>
-                          Request: {relatedRequest.accountType} for{" "}
-                          {formatCurrency(relatedRequest.openingBalance)}
-                        </small>
+                return (
+                  <tr key={customer.userId}>
+                    <td>
+                      <CustomerUserCell customer={customer} />
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack">
+                        <strong>{customer.phoneNumber || "No phone number"}</strong>
+                        <span>{formatDate(customer.dateOfBirth)}</span>
+                        <small>{customer.occupation || "No occupation listed"}</small>
                       </div>
-                    ) : showRequestMeta ? (
-                      <small>No pending account request</small>
-                    ) : null}
-                  </div>
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack">
+                        <strong>{formatAddress(customer) || "No address captured"}</strong>
+                        <span>{customer.gender || "Gender not provided"}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack vault-admin-registry-status">
+                        <StatusBadge status={customer.kycStatus} />
+                        {showRequestMeta && relatedRequest ? (
+                          <div className="vault-admin-request-meta">
+                            <RequestStatusBadge status={relatedRequest.status} />
+                            <small>
+                              Request: {relatedRequest.accountType} for{" "}
+                              {formatCurrency(relatedRequest.openingBalance)}
+                            </small>
+                          </div>
+                        ) : showRequestMeta ? (
+                          <small>No pending account request</small>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="is-actions">
+                      <div className="vault-admin-table-actions-cell">
+                        {kycPending ? (
+                          showKycActions ? (
+                            <div className="vault-admin-action-group">
+                              <div className="vault-admin-action-buttons">
+                                <button
+                                  type="button"
+                                  className="vault-admin-action is-approve"
+                                  onClick={() => onApproveKyc(customer.userId)}
+                                  disabled={isMutating}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="vault-admin-action is-reject"
+                                  onClick={() => onRejectKyc(customer.userId)}
+                                  disabled={isMutating}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                              <KycActionState customer={customer} actionable />
+                            </div>
+                          ) : (
+                            <KycActionState customer={customer} actionable={false} />
+                          )
+                        ) : (
+                          <KycActionState customer={customer} actionable={false} />
+                        )}
 
-                  <div className="vault-admin-registry-field vault-admin-registry-actions" data-label={actionColumnLabel}>
-                    {kycPending ? (
-                      showKycActions ? (
-                        <div className="vault-admin-action-group">
-                          <div className="vault-admin-action-buttons">
+                        {showAccountActions && relatedRequest ? (
+                          <div className="vault-admin-account-request-card">
+                            <div>
+                              <strong>Account request pending</strong>
+                              <span>
+                                {relatedRequest.accountType} request for{" "}
+                                {formatCurrency(relatedRequest.openingBalance)}
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              className="vault-admin-action is-approve"
-                              onClick={() => onApproveKyc(customer.userId)}
+                              className="vault-admin-inline-button"
+                              onClick={() => onApproveAccount(relatedRequest.id)}
                               disabled={isMutating}
                             >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              className="vault-admin-action is-reject"
-                              onClick={() => onRejectKyc(customer.userId)}
-                              disabled={isMutating}
-                            >
-                              Reject
+                              Approve account
                             </button>
                           </div>
-                          <KycActionState customer={customer} actionable />
-                        </div>
-                      ) : (
-                        <KycActionState customer={customer} actionable={false} />
-                      )
-                    ) : (
-                      <KycActionState customer={customer} actionable={false} />
-                    )}
-
-                    {showAccountActions && relatedRequest ? (
-                      <div className="vault-admin-account-request-card">
-                        <div>
-                          <strong>Account request pending</strong>
-                          <span>
-                            {relatedRequest.accountType} request for{" "}
-                            {formatCurrency(relatedRequest.openingBalance)}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="vault-admin-inline-button"
-                          onClick={() => onApproveAccount(relatedRequest.id)}
-                          disabled={isMutating}
-                        >
-                          Approve account
-                        </button>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </Panel>
   );

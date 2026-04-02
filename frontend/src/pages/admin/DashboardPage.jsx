@@ -48,7 +48,7 @@ function getVerificationRate(overview) {
 
 function HealthScoreCard({ overview }) {
   return (
-    <article className="vault-admin-health-card">
+    <article className="vault-admin-health-card min-w-0 rounded-[24px] p-4 sm:p-5">
       <div className="vault-admin-insight-copy">
         <h3>Institutional Health Score</h3>
         <p>
@@ -79,7 +79,7 @@ export default function DashboardPage() {
   const overviewBusy = workspace.tracker.isPending("overview");
 
   return (
-    <section className="vault-admin-page">
+    <section className="vault-admin-page min-w-0">
       <AdminOverviewPanel
         overview={workspace.overview}
         isLoading={overviewBusy}
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         onRefresh={workspace.loadOverview}
       />
 
-      <div className="vault-admin-page-grid">
+      <div className="vault-admin-page-grid min-w-0">
         <HealthScoreCard overview={workspace.overview} />
       </div>
     </section>

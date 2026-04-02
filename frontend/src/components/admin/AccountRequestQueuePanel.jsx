@@ -19,6 +19,15 @@ function getActionLabel(status) {
   return "Approve account";
 }
 
+function RequesterCell({ request }) {
+  return (
+    <div className="vault-admin-cell-stack">
+      <strong>{request.requesterFullName}</strong>
+      <span>@{request.requesterUsername}</span>
+    </div>
+  );
+}
+
 export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
   requests,
   isLoading,
@@ -28,7 +37,7 @@ export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
   onApprove
 }) {
   return (
-    <Panel className="vault-admin-panel vault-admin-approvals-panel">
+    <Panel className="vault-admin-panel vault-admin-approvals-panel min-w-0 w-full rounded-[24px] p-4">
       <SectionHeader
         title="Pending Approvals"
         subtitle="Customer account requests awaiting explicit administrative approval."
@@ -68,41 +77,70 @@ export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
       ) : null}
 
       {!isLoading && !error && requests.length > 0 ? (
-        <div className="vault-admin-request-grid">
-          {requests.map((request) => {
-            const isPending = String(request.status || "").toUpperCase() === "PENDING";
+        <div className="vault-admin-table-shell w-full overflow-x-auto">
+          <table className="vault-admin-data-table vault-admin-request-table w-full">
+            <colgroup>
+              <col className="vault-admin-col-requester" />
+              <col className="vault-admin-col-request-details" />
+              <col className="vault-admin-col-request-date" />
+              <col className="vault-admin-col-request-status" />
+              <col className="vault-admin-col-request-actions" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Requester</th>
+                <th scope="col">Account Request</th>
+                <th scope="col">Submitted</th>
+                <th scope="col">KYC &amp; Status</th>
+                <th scope="col" className="is-actions">
+                  Approval
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => {
+                const isPending = String(request.status || "").toUpperCase() === "PENDING";
 
-            return (
-              <article key={request.id} className="vault-admin-request-card">
-                <div className="vault-admin-request-card-head">
-                  <div>
-                    <span>{request.requesterUsername}</span>
-                    <strong>{request.requesterFullName}</strong>
-                  </div>
-                  <StatusBadge status={request.status} />
-                </div>
-
-                <div className="vault-admin-request-card-body">
-                  <p>
-                    {request.accountType} account for {formatCurrency(request.openingBalance)}
-                  </p>
-                  <p>Submitted {formatDate(request.createdAt)}</p>
-                  <p>KYC status: {request.kycStatus}</p>
-                </div>
-
-                <div className="vault-admin-request-card-actions">
-                  <button
-                    type="button"
-                    className="vault-admin-primary-button"
-                    onClick={() => onApprove(request.id)}
-                    disabled={!isPending || isMutating}
-                  >
-                    {getActionLabel(request.status)}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+                return (
+                  <tr key={request.id}>
+                    <td>
+                      <RequesterCell request={request} />
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack">
+                        <strong>{request.accountType} Account</strong>
+                        <span>{formatCurrency(request.openingBalance)} opening balance</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack">
+                        <strong>{formatDate(request.createdAt)}</strong>
+                        <span>Awaiting administrative release</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="vault-admin-cell-stack">
+                        <StatusBadge status={request.status} />
+                        <small>KYC status: {request.kycStatus}</small>
+                      </div>
+                    </td>
+                    <td className="is-actions">
+                      <div className="vault-admin-table-actions-cell">
+                        <button
+                          type="button"
+                          className="vault-admin-primary-button"
+                          onClick={() => onApprove(request.id)}
+                          disabled={!isPending || isMutating}
+                        >
+                          {getActionLabel(request.status)}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : null}
     </Panel>

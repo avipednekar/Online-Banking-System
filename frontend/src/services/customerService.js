@@ -47,13 +47,6 @@ export const customerService = {
       body: payload
     });
   },
-  activateBeneficiary(token, beneficiaryId, otpCode) {
-    return apiRequest(`/beneficiaries/${beneficiaryId}/activate`, {
-      method: "POST",
-      token,
-      body: { otpCode }
-    });
-  },
   createTransfer(token, payload, idempotencyKey) {
     return apiRequest("/transfers", {
       method: "POST",

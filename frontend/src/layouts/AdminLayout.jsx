@@ -123,7 +123,7 @@ export default function AdminLayout() {
   }
 
   return (
-    <section className="vault-admin-dashboard vault-admin-layout">
+    <section className="vault-admin-dashboard vault-admin-layout min-h-screen px-3 py-3 md:px-4 md:py-4 lg:h-screen lg:overflow-hidden">
       {drawerOpen ? (
         <button
           type="button"
@@ -133,9 +133,15 @@ export default function AdminLayout() {
         />
       ) : null}
 
-      <aside className={drawerOpen ? "vault-admin-sidebar is-open" : "vault-admin-sidebar"}>
+      <aside
+        className={
+          drawerOpen
+            ? "vault-admin-sidebar is-open w-full lg:w-auto"
+            : "vault-admin-sidebar w-full lg:w-auto"
+        }
+      >
         <div className="vault-admin-sidebar-head">
-          <div>
+          <div className="vault-admin-sidebar-brand">
             <h1>Admin Portal</h1>
             <p>Institutional Access</p>
           </div>
@@ -158,11 +164,16 @@ export default function AdminLayout() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  isActive ? "vault-admin-nav-item is-active" : "vault-admin-nav-item"
+                  isActive
+                    ? "vault-admin-nav-item is-active group rounded-2xl px-3 py-3"
+                    : "vault-admin-nav-item group rounded-2xl px-3 py-3"
                 }
               >
                 <Icon size={17} />
-                <span>{item.label}</span>
+                <span className="vault-admin-nav-copy">
+                  <strong>{item.label}</strong>
+                  <small>{item.description}</small>
+                </span>
               </NavLink>
             );
           })}
@@ -189,9 +200,12 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <main ref={mainRef} className="vault-admin-main vault-admin-layout-main">
+      <main
+        ref={mainRef}
+        className="vault-admin-main vault-admin-layout-main min-w-0 flex-1 overflow-y-auto"
+      >
         <header className="vault-admin-header">
-          <div>
+          <div className="min-w-0">
             <div className="vault-admin-breadcrumb">
               <span>Admin Console</span>
               <ChevronRight size={12} />
@@ -201,7 +215,7 @@ export default function AdminLayout() {
             <p>{pageMeta.subtitle}</p>
           </div>
 
-          <div className="vault-admin-header-actions">
+          <div className="vault-admin-header-actions shrink-0">
             <button
               type="button"
               className="vault-admin-icon-button vault-admin-menu-button"
@@ -226,14 +240,16 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <Outlet
-          context={{
-            workspace,
-            shellBusy,
-            actionBusy,
-            refreshWorkspace
-          }}
-        />
+        <div className="vault-admin-content min-w-0 flex-1">
+          <Outlet
+            context={{
+              workspace,
+              shellBusy,
+              actionBusy,
+              refreshWorkspace
+            }}
+          />
+        </div>
       </main>
     </section>
   );

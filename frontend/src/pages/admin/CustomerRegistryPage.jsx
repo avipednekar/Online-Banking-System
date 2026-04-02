@@ -6,7 +6,7 @@ export default function CustomerRegistryPage() {
   const customersBusy = workspace.tracker.isPending("customers");
 
   return (
-    <section className="vault-admin-page">
+    <section className="vault-admin-page min-w-0">
       <CustomerRegistryPanel
         title="Customer Registry"
         subtitle="Search the full customer base, inspect KYC state, and monitor onboarding signals."

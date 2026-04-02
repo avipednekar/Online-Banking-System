@@ -1,7 +1,6 @@
 package com.onlinebanking.service;
 
 import com.onlinebanking.dto.BeneficiaryLookupResponse;
-import com.onlinebanking.dto.BeneficiaryActivationRequest;
 import com.onlinebanking.dto.BeneficiaryRequest;
 import com.onlinebanking.dto.BeneficiaryResponse;
 import com.onlinebanking.exception.BusinessException;
@@ -17,15 +16,11 @@ import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
-import com.onlinebanking.security.crypto.SensitiveDataCrypto;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -33,36 +28,23 @@ public class BeneficiaryService {
 
     private static final Logger log = LoggerFactory.getLogger(BeneficiaryService.class);
     private static final String INTERNAL_BANK_NAME = "Internal Bank";
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final BeneficiaryRepository beneficiaryRepository;
     private final AccountRepository accountRepository;
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final AuditService auditService;
-    private final OutboxService outboxService;
-    private final int coolingPeriodMinutes;
-    private final int activationWindowMinutes;
-    private final boolean autoActivate;
 
     public BeneficiaryService(BeneficiaryRepository beneficiaryRepository,
                               AccountRepository accountRepository,
                               BankUserRepository bankUserRepository,
                               CustomerProfileRepository customerProfileRepository,
-                              AuditService auditService,
-                              OutboxService outboxService,
-                              @Value("${app.beneficiary.cooling-period-minutes:240}") int coolingPeriodMinutes,
-                              @Value("${app.beneficiary.activation-window-minutes:30}") int activationWindowMinutes,
-                              @Value("${app.beneficiary.auto-activate:false}") boolean autoActivate) {
+                              AuditService auditService) {
         this.beneficiaryRepository = beneficiaryRepository;
         this.accountRepository = accountRepository;
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
         this.auditService = auditService;
-        this.outboxService = outboxService;
-        this.coolingPeriodMinutes = coolingPeriodMinutes;
-        this.activationWindowMinutes = activationWindowMinutes;
-        this.autoActivate = autoActivate;
     }
 
     @Transactional
@@ -97,20 +79,6 @@ public class BeneficiaryService {
                         resolveAccountHolderName(beneficiary.getAccountNumber())
                 ))
                 .toList();
-    }
-
-    @Transactional
-    public BeneficiaryResponse activateBeneficiary(String username, String beneficiaryId, BeneficiaryActivationRequest request) {
-        Beneficiary beneficiary = beneficiaryRepository.findByBeneficiaryIdAndOwnerUsernameIgnoreCase(beneficiaryId, username)
-                .orElseThrow(() -> new ResourceNotFoundException("Beneficiary not found"));
-        if (beneficiary.isActive()) {
-            return toResponse(beneficiary, resolveAccountHolderName(beneficiary.getAccountNumber()));
-        }
-        beneficiary.activate();
-        Beneficiary saved = beneficiaryRepository.save(beneficiary);
-        auditService.log(username, "BENEFICIARY_ACTIVATED", "Beneficiary", String.valueOf(saved.getId()),
-                "Beneficiary activated for account " + saved.getAccountNumber());
-        return toResponse(saved, resolveAccountHolderName(saved.getAccountNumber()));
     }
 
     public void ensureActiveBeneficiary(String username, String destinationAccountNumber) {
@@ -177,9 +145,5 @@ public class BeneficiaryService {
                 beneficiary.getActivationReadyAt(),
                 beneficiary.getCreatedAt()
         );
-    }
-
-    private String generateActivationCode() {
-        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
     }
 }

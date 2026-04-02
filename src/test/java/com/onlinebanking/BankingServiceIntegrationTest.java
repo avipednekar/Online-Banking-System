@@ -108,6 +108,21 @@ class BankingServiceIntegrationTest {
     }
 
     @Test
+    void beneficiaryCreationActivatesImmediatelyWithoutOtp() {
+        authService.register(registerRequest("jia", "jia@example.com"));
+        Long karanId = authService.register(registerRequest("karan", "karan@example.com")).userId();
+        String receiverAccount = submitAndApproveAccount("karan", karanId, AccountType.SAVINGS, "900.00").approvedAccountNumber();
+
+        var beneficiary = beneficiaryService.createBeneficiary(
+                "jia",
+                new BeneficiaryRequest("Karan", "Internal Bank", receiverAccount)
+        );
+
+        assertTrue(beneficiary.active());
+        assertEquals("ACTIVE", beneficiary.status());
+    }
+
+    @Test
     void beneficiaryCreationRejectsUnknownAccountNumber() {
         authService.register(registerRequest("jatin", "jatin@example.com"));
 

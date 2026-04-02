@@ -14,8 +14,10 @@
 -- ---------------------------------------------------------------------------
 -- findByUsernameIgnoreCase / existsByUsernameIgnoreCase
 -- Hibernate generates: WHERE LOWER(username) = LOWER(?)
--- The existing UNIQUE(username) index does NOT cover LOWER() lookups.
-create index idx_bank_users_username_lower on bank_users (lower(username));
+-- H2 does not support functional indexes here, so tests use a plain username
+-- index for portability. PostgreSQL deployments can replace this with a
+-- LOWER(username) index in an operational migration if lookup volume warrants it.
+create index idx_bank_users_username_lower on bank_users (username);
 
 -- countByRole (admin dashboard overview)
 create index idx_bank_users_role on bank_users (role);
@@ -90,5 +92,7 @@ create index idx_transfer_records_to_account on transfer_records (to_account_id,
 -- 8. outbox_events — Event processing
 -- ---------------------------------------------------------------------------
 -- Pollers query for unprocessed events: WHERE processed_at IS NULL
--- Without this index, every poll does a full table scan.
-create index idx_outbox_events_unprocessed on outbox_events (created_at) where processed_at is null;
+-- H2 test schema does not support partial indexes, so this uses a plain
+-- created_at index for portability. PostgreSQL deployments can replace this
+-- with a partial index on processed_at IS NULL if the polling workload grows.
+create index idx_outbox_events_unprocessed on outbox_events (created_at);

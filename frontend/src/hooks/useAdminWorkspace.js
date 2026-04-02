@@ -141,8 +141,7 @@ export function useAdminWorkspace() {
       setCustomers((current) =>
         current.map((customer) => (customer.userId === updated.userId ? updated : customer))
       );
-      await loadOverview();
-      await loadAccountRequests();
+      await Promise.all([loadOverview(), loadCustomers(), loadAccountRequests()]);
       notifySuccess("KYC updated", `Customer ${updated.username} marked as ${updated.kycStatus}.`);
     } catch (error) {
       handleSessionError(error, "KYC update failed");
@@ -157,8 +156,7 @@ export function useAdminWorkspace() {
       const accessToken = await getValidAccessToken();
       const approved = await adminService.approveAccountRequest(accessToken, requestId);
       setAccountRequests((current) => current.filter((request) => request.id !== approved.id));
-      await loadOverview();
-      await loadCustomers();
+      await Promise.all([loadOverview(), loadCustomers(), loadAccountRequests()]);
       notifySuccess("Account approved", `Account ${approved.approvedAccountNumber} opened for ${approved.requesterUsername}.`);
     } catch (error) {
       handleSessionError(error, "Account approval failed");

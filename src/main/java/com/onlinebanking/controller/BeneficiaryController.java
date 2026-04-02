@@ -1,7 +1,6 @@
 package com.onlinebanking.controller;
 
 import com.onlinebanking.dto.ApiResponse;
-import com.onlinebanking.dto.BeneficiaryActivationRequest;
 import com.onlinebanking.dto.BeneficiaryLookupResponse;
 import com.onlinebanking.dto.BeneficiaryRequest;
 import com.onlinebanking.dto.BeneficiaryResponse;
@@ -35,16 +34,6 @@ public class BeneficiaryController {
         BeneficiaryResponse response = beneficiaryService.createBeneficiary(authentication.getName(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Beneficiary created successfully", response));
-    }
-
-    @PostMapping("/{beneficiaryId}/activate")
-    public ResponseEntity<ApiResponse<BeneficiaryResponse>> activateBeneficiary(Authentication authentication,
-                                                                                @PathVariable String beneficiaryId,
-                                                                                @Valid @RequestBody BeneficiaryActivationRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(
-                "Beneficiary activated successfully",
-                beneficiaryService.activateBeneficiary(authentication.getName(), beneficiaryId, request)
-        ));
     }
 
     @GetMapping("/lookup/{accountNumber}")

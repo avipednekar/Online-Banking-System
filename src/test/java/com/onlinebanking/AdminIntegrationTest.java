@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -72,12 +73,25 @@ class AdminIntegrationTest {
         JsonNode adminResponse = objectMapper.readTree(adminLogin.getResponse().getContentAsString());
         String adminToken = adminResponse.get("data").get("token").asText();
 
-        mockMvc.perform(get("/api/admin/customers")
+        MvcResult customersBeforeUpdate = mockMvc.perform(get("/api/admin/customers")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].username").value("sara"))
-                .andExpect(jsonPath("$.data[0].kycStatus").value("PENDING"));
+                .andReturn();
+
+        JsonNode initialCustomers = extractCustomerCollection(
+                objectMapper.readTree(customersBeforeUpdate.getResponse().getContentAsString())
+        );
+        boolean pendingStatus = false;
+        for (JsonNode customer : initialCustomers) {
+            JsonNode username = customer.get("username");
+            JsonNode kycStatus = customer.get("kycStatus");
+            if (username != null && "sara".equals(username.asText())) {
+                pendingStatus = kycStatus != null && "PENDING".equals(kycStatus.asText());
+                break;
+            }
+        }
+        assertTrue(pendingStatus);
 
         mockMvc.perform(patch("/api/admin/customers/{userId}/kyc", userId)
                         .header("Authorization", "Bearer " + adminToken)
@@ -91,6 +105,25 @@ class AdminIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.username").value("sara"))
                 .andExpect(jsonPath("$.data.kycStatus").value("VERIFIED"));
+
+        MvcResult customersAfterUpdate = mockMvc.perform(get("/api/admin/customers")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode refreshedCustomers = extractCustomerCollection(
+                objectMapper.readTree(customersAfterUpdate.getResponse().getContentAsString())
+        );
+        boolean persistedStatus = false;
+        for (JsonNode customer : refreshedCustomers) {
+            JsonNode username = customer.get("username");
+            JsonNode kycStatus = customer.get("kycStatus");
+            if (username != null && "sara".equals(username.asText())) {
+                persistedStatus = kycStatus != null && "VERIFIED".equals(kycStatus.asText());
+                break;
+            }
+        }
+        assertTrue(persistedStatus);
     }
 
     @Test
@@ -198,5 +231,16 @@ class AdminIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].accountNumber").value(org.hamcrest.Matchers.matchesPattern("9\\d{9}")));
+    }
+
+    private JsonNode extractCustomerCollection(JsonNode response) {
+        JsonNode data = response.get("data");
+        if (data != null && data.isArray()) {
+            return data;
+        }
+        if (data != null && data.has("content")) {
+            return data.get("content");
+        }
+        return objectMapper.createArrayNode();
     }
 }

@@ -6,7 +6,7 @@ export default function AccountApprovalsPage() {
   const requestsBusy = workspace.tracker.isPending("accountRequests");
 
   return (
-    <section className="vault-admin-page">
+    <section className="vault-admin-page min-w-0">
       <AccountRequestQueuePanel
         requests={workspace.accountRequests}
         isLoading={requestsBusy}

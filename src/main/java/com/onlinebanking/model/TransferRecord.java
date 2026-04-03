@@ -1,6 +1,7 @@
 package com.onlinebanking.model;
 
 import com.onlinebanking.util.IdentifierGenerator;
+import com.onlinebanking.util.IndiaMarketPolicy;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -96,7 +97,7 @@ public class TransferRecord {
         this.beneficiary = beneficiary;
         this.channel = channel;
         this.amount = amount;
-        this.currencyCode = currencyCode;
+        this.currencyCode = IndiaMarketPolicy.normalizeCurrency(currencyCode);
         this.requestedBy = requestedBy;
         this.remarks = remarks;
         this.status = TransferStatus.INITIATED;

@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
 import { RouteLink } from "../components/common/RouteLink";
-import { countryOptions } from "../constants/authLayout";
 import { genderOptions } from "../constants/forms";
 import { useAuthForms } from "../hooks/useAuthForms";
 
@@ -18,7 +17,8 @@ function RegisterField({
   placeholder,
   options = [],
   trailing = null,
-  className = ""
+  className = "",
+  readOnly = false
 }) {
   const isSelect = type === "select";
 
@@ -34,6 +34,7 @@ function RegisterField({
             className="vault-register-input vault-register-select"
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${name}-error` : undefined}
+            disabled={readOnly}
           >
             {options.map((option) => (
               <option key={option.value} value={option.value}>
@@ -51,6 +52,7 @@ function RegisterField({
             aria-invalid={Boolean(error)}
             aria-describedby={error ? `${name}-error` : undefined}
             placeholder={placeholder}
+            readOnly={readOnly}
           />
         )}
         {trailing ? <div className="vault-register-input-trailing">{trailing}</div> : null}
@@ -69,22 +71,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [consentError, setConsentError] = useState("");
-
-  const orderedCountryOptions = useMemo(() => {
-    const sorted = [...countryOptions];
-    sorted.sort((left, right) => {
-      if (left.value === "United States") {
-        return -1;
-      }
-
-      if (right.value === "United States") {
-        return 1;
-      }
-
-      return left.label.localeCompare(right.label);
-    });
-    return sorted;
-  }, []);
 
   async function handleSubmit(event) {
     if (!consentAccepted) {
@@ -282,7 +268,7 @@ export default function RegisterPage() {
                     value={registerForm.values.city}
                     onChange={registerForm.setValue}
                     error={registerForm.errors.city}
-                    placeholder="New York"
+                    placeholder="Mumbai"
                   />
                   <RegisterField
                     label="State / Province"
@@ -290,7 +276,7 @@ export default function RegisterPage() {
                     value={registerForm.values.state}
                     onChange={registerForm.setValue}
                     error={registerForm.errors.state}
-                    placeholder="NY"
+                    placeholder="Maharashtra"
                   />
                   <RegisterField
                     label="Postal Code"
@@ -298,7 +284,7 @@ export default function RegisterPage() {
                     value={registerForm.values.postalCode}
                     onChange={registerForm.setValue}
                     error={registerForm.errors.postalCode}
-                    placeholder="10001"
+                    placeholder="400001"
                   />
                   <RegisterField
                     label="Country"
@@ -306,8 +292,8 @@ export default function RegisterPage() {
                     value={registerForm.values.country}
                     onChange={registerForm.setValue}
                     error={registerForm.errors.country}
-                    type="select"
-                    options={orderedCountryOptions}
+                    placeholder="India"
+                    readOnly
                   />
                 </div>
               </section>

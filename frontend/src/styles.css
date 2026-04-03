@@ -4351,6 +4351,7 @@ select:focus {
   border: 1px solid rgba(223, 228, 236, 0.95);
   background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
   color: inherit;
+  cursor: pointer;
 }
 
 .vault-dashboard-account-card:hover {
@@ -4366,6 +4367,11 @@ select:focus {
   background:
     radial-gradient(circle at top right, rgba(117, 141, 213, 0.14), transparent 28%),
     linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+}
+
+.vault-dashboard-account-card:focus-visible {
+  outline: 2px solid rgba(117, 141, 213, 0.82);
+  outline-offset: 2px;
 }
 
 .vault-dashboard-account-top,
@@ -4384,6 +4390,10 @@ select:focus {
   margin: 0;
 }
 
+.vault-dashboard-account-copy {
+  min-width: 0;
+}
+
 .vault-dashboard-account-top p {
   color: #434f67;
   font-size: 0.74rem;
@@ -4397,6 +4407,40 @@ select:focus {
   color: #8a94a7;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.vault-dashboard-account-number-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.vault-dashboard-account-visibility {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(242, 244, 246, 0.96);
+  color: #5d6880;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.vault-dashboard-account-visibility:hover {
+  background: rgba(221, 227, 235, 0.96);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.vault-dashboard-account-visibility:focus-visible {
+  outline: 2px solid rgba(117, 141, 213, 0.82);
+  outline-offset: 2px;
 }
 
 .vault-dashboard-account-top svg {

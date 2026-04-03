@@ -275,9 +275,9 @@ export function useCustomerWorkspace() {
           fromAccountId: transferForm.values.fromAccountId,
           beneficiaryId: transferForm.values.beneficiaryId,
           amount: Number(transferForm.values.amount),
-          currency: transferForm.values.currency || "USD",
+          currency: "INR",
           remarks: transferForm.values.remarks,
-          channel: transferForm.values.channel || "WEB"
+          channel: transferForm.values.channel || "ONLINE_BANKING"
         },
         idempotencyKey
       );

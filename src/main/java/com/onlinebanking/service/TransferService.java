@@ -21,11 +21,13 @@ import com.onlinebanking.model.TransferStatus;
 import com.onlinebanking.repository.AccountBalanceRepository;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
+import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
 import com.onlinebanking.repository.LedgerPostingRepository;
 import com.onlinebanking.repository.PostingBatchRepository;
 import com.onlinebanking.repository.TransactionRepository;
 import com.onlinebanking.repository.TransferRecordRepository;
+import com.onlinebanking.util.IndiaMarketPolicy;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ public class TransferService {
     private final LedgerPostingRepository ledgerPostingRepository;
     private final TransactionRepository transactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final CustomerProfileRepository customerProfileRepository;
     private final AuditService auditService;
     private final OutboxService outboxService;
     private final BigDecimal approvalThreshold;
@@ -60,6 +63,7 @@ public class TransferService {
                            LedgerPostingRepository ledgerPostingRepository,
                            TransactionRepository transactionRepository,
                            LedgerEntryRepository ledgerEntryRepository,
+                           CustomerProfileRepository customerProfileRepository,
                            AuditService auditService,
                            OutboxService outboxService,
                            @Value("${app.transfer.approval-threshold:50000.00}") BigDecimal approvalThreshold) {
@@ -71,6 +75,7 @@ public class TransferService {
         this.ledgerPostingRepository = ledgerPostingRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
+        this.customerProfileRepository = customerProfileRepository;
         this.auditService = auditService;
         this.outboxService = outboxService;
         this.approvalThreshold = approvalThreshold.setScale(2, RoundingMode.HALF_UP);
@@ -105,7 +110,17 @@ public class TransferService {
 
         ensureActiveAccount(fromAccount);
         ensureActiveAccount(toAccount);
-        if (!fromAccount.getCurrencyCode().equalsIgnoreCase(request.currency())) {
+        ensureIndiaOnlyTransfer(fromAccount, toAccount);
+
+        String requestedCurrency = IndiaMarketPolicy.normalizeCurrency(request.currency());
+        if (!IndiaMarketPolicy.isSupportedCurrency(requestedCurrency)) {
+            throw new BusinessException("Transfers are supported only in INR");
+        }
+        if (!IndiaMarketPolicy.isSupportedCurrency(fromAccount.getCurrencyCode())
+                || !IndiaMarketPolicy.isSupportedCurrency(toAccount.getCurrencyCode())) {
+            throw new BusinessException("Transfers are supported only for INR accounts");
+        }
+        if (!fromAccount.getCurrencyCode().equalsIgnoreCase(requestedCurrency)) {
             throw new BusinessException("Transfer currency must match the source account currency");
         }
 
@@ -117,7 +132,7 @@ public class TransferService {
                 beneficiary,
                 request.channel(),
                 amount,
-                request.currency().trim(),
+                requestedCurrency,
                 username,
                 request.remarks().trim()
         ));
@@ -255,6 +270,19 @@ public class TransferService {
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException("Account is not active for transactions");
         }
+    }
+
+    private void ensureIndiaOnlyTransfer(Account fromAccount, Account toAccount) {
+        if (!IndiaMarketPolicy.isSupportedCountry(resolveCountry(fromAccount))
+                || !IndiaMarketPolicy.isSupportedCountry(resolveCountry(toAccount))) {
+            throw new BusinessException("Transfers are restricted to accounts held in India");
+        }
+    }
+
+    private String resolveCountry(Account account) {
+        return customerProfileRepository.findByUserId(account.getOwner().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"))
+                .getCountry();
     }
 
     private BigDecimal normalize(BigDecimal amount) {

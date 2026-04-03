@@ -235,6 +235,33 @@ class SecurityIntegrationTest {
                 .andExpect(jsonPath("$.fields.password").exists());
     }
 
+    @Test
+    void registerRejectsNonIndiaCountry() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "oliver",
+                                  "email": "oliver@example.com",
+                                  "password": "Password@123",
+                                  "fullName": "Oliver Stone",
+                                  "phoneNumber": "9876543222",
+                                  "gender": "MALE",
+                                  "occupation": "Consultant",
+                                  "addressLine1": "1 Finance Avenue",
+                                  "addressLine2": "Tower A",
+                                  "city": "Dubai",
+                                  "state": "Dubai",
+                                  "postalCode": "000001",
+                                  "country": "United Arab Emirates",
+                                  "dateOfBirth": "1993-05-20"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.fields.country").value("Country must be India"));
+    }
+
     private Cookie extractRefreshCookie(MvcResult result) {
         String setCookieHeader = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
         assertNotNull(setCookieHeader);

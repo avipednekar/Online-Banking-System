@@ -61,7 +61,7 @@ const PAGE_META = {
 };
 
 function formatHeaderDate(value) {
-  return value.toLocaleDateString("en-US", {
+  return value.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
     year: "numeric"
@@ -194,7 +194,7 @@ export default function AdminLayout() {
             </div>
             <div>
               <strong>{workspace.user?.fullName || workspace.user?.username || "Admin Administrator"}</strong>
-              <span>Global Oversight</span>
+              <span>India Operations</span>
             </div>
           </div>
         </div>

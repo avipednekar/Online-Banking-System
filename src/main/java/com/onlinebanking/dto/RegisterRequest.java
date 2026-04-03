@@ -29,7 +29,9 @@ public record RegisterRequest(
         @NotBlank @Size(min = 4, max = 12)
         @Pattern(regexp = "^[A-Za-z0-9 -]+$", message = "Postal code contains invalid characters")
         String postalCode,
-        @NotBlank @Size(min = 2, max = 80) String country,
+        @NotBlank @Size(min = 2, max = 80)
+        @Pattern(regexp = "(?i)^india$", message = "Country must be India")
+        String country,
         @NotNull @Past LocalDate dateOfBirth
 ) {
 }

@@ -32,6 +32,7 @@ import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.repository.LedgerEntryRepository;
 import com.onlinebanking.repository.TransactionRepository;
+import com.onlinebanking.util.IndiaMarketPolicy;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +93,7 @@ public class BankingService {
     public AccountOpeningRequestResponse submitAccountOpeningRequest(String username, CreateAccountRequest request) {
         BankUser owner = getAuthenticatedUser(username);
         CustomerProfile profile = getCustomerProfile(owner.getId());
+        ensureIndiaResident(profile);
         if (profile.getKycStatus() != KycStatus.VERIFIED) {
             throw new BusinessException("KYC must be verified before submitting an account opening request");
         }
@@ -124,6 +126,7 @@ public class BankingService {
         }
 
         CustomerProfile profile = getCustomerProfile(accountOpeningRequest.getRequester().getId());
+        ensureIndiaResident(profile);
         if (profile.getKycStatus() != KycStatus.VERIFIED) {
             throw new BusinessException("Customer KYC must be verified before account approval");
         }
@@ -156,6 +159,7 @@ public class BankingService {
     @Transactional
     public AccountResponse deposit(String username, String accountNumber, BigDecimal amount) {
         Account account = getOwnedAccount(username, accountNumber);
+        ensureTransactionalAccess(account);
         ensureActiveAccount(account);
         BigDecimal normalizedAmount = validatePositiveAmount(amount);
         AccountBalance accountBalance = getRequiredAccountBalance(account.getAccountId());
@@ -182,6 +186,7 @@ public class BankingService {
     @Transactional
     public AccountResponse withdraw(String username, String accountNumber, BigDecimal amount) {
         Account account = getOwnedAccount(username, accountNumber);
+        ensureTransactionalAccess(account);
         ensureActiveAccount(account);
         BigDecimal normalizedAmount = validatePositiveAmount(amount);
         AccountBalance accountBalance = getRequiredAccountBalance(account.getAccountId());
@@ -217,6 +222,7 @@ public class BankingService {
         }
 
         Account fromAccount = getOwnedAccount(username, request.fromAccountNumber());
+        ensureTransactionalAccess(fromAccount);
         var beneficiary = beneficiaryService.getActiveBeneficiaryByAccountNumber(username, request.toAccountNumber());
         transferService.initiateTransfer(
                 username,
@@ -274,6 +280,23 @@ public class BankingService {
     private void ensureActiveAccount(Account account) {
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException("Account is not active for transactions");
+        }
+    }
+
+    private void ensureTransactionalAccess(Account account) {
+        ensureInrCurrency(account.getCurrencyCode());
+        ensureIndiaResident(getCustomerProfile(account.getOwner().getId()));
+    }
+
+    private void ensureInrCurrency(String currencyCode) {
+        if (!IndiaMarketPolicy.isSupportedCurrency(currencyCode)) {
+            throw new BusinessException("Only INR transactions are supported");
+        }
+    }
+
+    private void ensureIndiaResident(CustomerProfile profile) {
+        if (!IndiaMarketPolicy.isSupportedCountry(profile.getCountry())) {
+            throw new BusinessException("Banking operations are restricted to customers in India");
         }
     }
 

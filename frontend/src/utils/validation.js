@@ -69,6 +69,8 @@ export function validateRegistration(values) {
 
   if (!hasValue(values.country)) {
     errors.country = "Country is required.";
+  } else if (String(values.country).trim().toLowerCase() !== "india") {
+    errors.country = "Country must be India.";
   }
 
   if (!hasValue(values.dateOfBirth)) {
@@ -125,6 +127,8 @@ export function validateTransfer(values) {
 
   if (!hasValue(values.currency)) {
     errors.currency = "Currency is required.";
+  } else if (String(values.currency).trim().toUpperCase() !== "INR") {
+    errors.currency = "Transfers are supported only in INR.";
   }
 
   if (!hasValue(values.remarks)) {

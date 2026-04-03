@@ -10,6 +10,7 @@ import com.onlinebanking.model.AccountType;
 import com.onlinebanking.model.KycStatus;
 import com.onlinebanking.model.TransactionChannel;
 import com.onlinebanking.model.TransferStatus;
+import com.onlinebanking.repository.CustomerProfileRepository;
 import com.onlinebanking.repository.TransferRecordRepository;
 import com.onlinebanking.service.AdminService;
 import com.onlinebanking.service.AuthService;
@@ -56,6 +57,9 @@ class TransferServiceIntegrationTest {
 
     @Autowired
     private TransferRecordRepository transferRecordRepository;
+
+    @Autowired
+    private CustomerProfileRepository customerProfileRepository;
 
     @Test
     void idempotentTransferReplaysWithoutDoublePosting() {
@@ -162,6 +166,58 @@ class TransferServiceIntegrationTest {
         assertNotEquals(outcomes.get(0), outcomes.get(1));
         assertEquals(new BigDecimal("799.00"), bankingService.getAccount("xena", senderAccount).balance());
         assertEquals(new BigDecimal("1601.00"), bankingService.getAccount("yash", receiverAccount).balance());
+    }
+
+    @Test
+    void transferRejectsNonInrCurrency() {
+        Long senderId = authService.register(registerRequest("zara", "zara@example.com")).userId();
+        Long receiverId = authService.register(registerRequest("amit", "amit@example.com")).userId();
+
+        String senderAccount = submitAndApproveAccount("zara", senderId, AccountType.SAVINGS, "5000.00");
+        String receiverAccount = submitAndApproveAccount("amit", receiverId, AccountType.SAVINGS, "1000.00");
+        var beneficiary = beneficiaryService.createBeneficiary("zara", new BeneficiaryRequest("Amit", "Internal Bank", receiverAccount));
+        String senderAccountId = bankingService.getAccount("zara", senderAccount).accountId();
+
+        assertThrows(com.onlinebanking.exception.BusinessException.class, () -> transferService.initiateTransfer(
+                "zara",
+                new CreateTransferRequest(
+                        senderAccountId,
+                        beneficiary.beneficiaryId(),
+                        new BigDecimal("250.00"),
+                        "USD",
+                        "External currency attempt",
+                        TransactionChannel.ONLINE_BANKING
+                ),
+                "idem-non-inr-001"
+        ));
+    }
+
+    @Test
+    void transferRejectsDestinationOutsideIndia() {
+        Long senderId = authService.register(registerRequest("bhavya", "bhavya@example.com")).userId();
+        Long receiverId = authService.register(registerRequest("chirag", "chirag@example.com")).userId();
+
+        String senderAccount = submitAndApproveAccount("bhavya", senderId, AccountType.SAVINGS, "6000.00");
+        String receiverAccount = submitAndApproveAccount("chirag", receiverId, AccountType.SAVINGS, "1200.00");
+        var beneficiary = beneficiaryService.createBeneficiary("bhavya", new BeneficiaryRequest("Chirag", "Internal Bank", receiverAccount));
+        String senderAccountId = bankingService.getAccount("bhavya", senderAccount).accountId();
+
+        var receiverProfile = customerProfileRepository.findByUserUsernameIgnoreCase("chirag").orElseThrow();
+        receiverProfile.setCountry("Singapore");
+        customerProfileRepository.save(receiverProfile);
+
+        assertThrows(com.onlinebanking.exception.BusinessException.class, () -> transferService.initiateTransfer(
+                "bhavya",
+                new CreateTransferRequest(
+                        senderAccountId,
+                        beneficiary.beneficiaryId(),
+                        new BigDecimal("250.00"),
+                        "INR",
+                        "Cross-border attempt",
+                        TransactionChannel.ONLINE_BANKING
+                ),
+                "idem-non-india-001"
+        ));
     }
 
     private String submitAndApproveAccount(String username,

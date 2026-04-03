@@ -7,6 +7,8 @@ import {
   Check,
   ChevronRight,
   Download,
+  Eye,
+  EyeOff,
   KeyRound,
   Landmark,
   LogOut,
@@ -26,11 +28,11 @@ import { useCustomerWorkspace } from "../hooks/useCustomerWorkspace";
 const CUSTOMER_AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCnZuPDXz4R9CndRc6N7mJb4vbMuiJwkQkdVOFERnBUvDHOR-x-6O-mESC5WLwhpivI-CoYmMK1O-1ax_vJa8Jz4xbKwssaYR5zChMq1uQW2norEScAH5OGnbM_-3aLYqWZ9iMSE5fxjHsvMxzSUeInolWWZT2H4R4maaKc_xC_EyH5lcl3GiXObc-8lt7xHUSwSzEv1B2Bfa8r8u88YH4eGunGHO_YymzDzaig5-r18klE8CwfXlUxLUXfum4AZ5I67n1Jp3FH2TQB";
 
-function formatMoney(value, currencyCode = "USD") {
+function formatMoney(value, currencyCode = "INR") {
   const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: currencyCode === "INR" ? "USD" : currencyCode,
+    currency: String(currencyCode || "INR").toUpperCase() === "INR" ? "INR" : "INR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);
@@ -46,7 +48,7 @@ function formatCompactDate(value) {
     return value;
   }
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
     year: "numeric"
@@ -59,6 +61,14 @@ function formatAccountAlias(accountNumber) {
   }
 
   return accountNumber.slice(-4);
+}
+
+function formatMaskedAccountNumber(accountNumber) {
+  if (!accountNumber) {
+    return "****";
+  }
+
+  return `**** ${accountNumber.slice(-4)}`;
 }
 
 function getAccountLabel(accountType) {
@@ -170,15 +180,11 @@ function TransferCard({ workspace }) {
           </label>
           <label className="vault-dashboard-field vault-dashboard-field-sm">
             <span>Currency</span>
-            <select
-              value={workspace.transferForm.values.currency}
-              onChange={(e) => workspace.transferForm.setValue("currency", e.target.value)}
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="INR">INR</option>
-            </select>
+            <input
+              type="text"
+              value="INR (₹)"
+              readOnly
+            />
           </label>
         </div>
 
@@ -245,7 +251,7 @@ function DepositWithdrawCard({ workspace, activeAction, onActionChange }) {
           </select>
         </label>
         <label className="vault-dashboard-field">
-          <span>Amount (USD)</span>
+          <span>Amount (INR)</span>
           <input
             type="number"
             min="0.01"
@@ -437,11 +443,31 @@ export default function CustomerPage() {
   const workspace = useCustomerWorkspace();
   const [activeAction, setActiveAction] = useState("deposit");
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
+  const [visibleAccountNumbers, setVisibleAccountNumbers] = useState(() => new Set());
 
   const verifiedRequest = useMemo(
     () => workspace.accountRequests.find((e) => String(e.status || "").toUpperCase() === "PENDING"),
     [workspace.accountRequests]
   );
+
+  function toggleAccountNumber(accountNumber) {
+    setVisibleAccountNumbers((current) => {
+      const next = new Set(current);
+      if (next.has(accountNumber)) {
+        next.delete(accountNumber);
+      } else {
+        next.add(accountNumber);
+      }
+      return next;
+    });
+  }
+
+  function handleAccountCardKeyDown(event, accountNumber) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      workspace.loadTransactions(accountNumber);
+    }
+  }
 
   return (
     <section className="vault-customer-dashboard">
@@ -525,16 +551,48 @@ export default function CustomerPage() {
           ) : (
             <div className="vault-dashboard-account-strip">
               {workspace.accounts.map((account, i) => (
-                <button
+                <article
                   key={account.accountNumber}
-                  type="button"
                   className={["vault-dashboard-account-card", workspace.selectedAccount === account.accountNumber ? "is-selected" : "", i === 1 ? "is-portfolio" : ""].filter(Boolean).join(" ")}
                   onClick={() => workspace.loadTransactions(account.accountNumber)}
+                  onKeyDown={(event) => handleAccountCardKeyDown(event, account.accountNumber)}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="vault-dashboard-account-top">
-                    <div>
+                    <div className="vault-dashboard-account-copy">
                       <p>{getAccountLabel(account.accountType)}</p>
-                      <span>**** {formatAccountAlias(account.accountNumber)}</span>
+                      <div className="vault-dashboard-account-number-row">
+                        <span>
+                          {visibleAccountNumbers.has(account.accountNumber)
+                            ? account.accountNumber
+                            : formatMaskedAccountNumber(account.accountNumber)}
+                        </span>
+                        <button
+                          type="button"
+                          className="vault-dashboard-account-visibility"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleAccountNumber(account.accountNumber);
+                          }}
+                          aria-label={
+                            visibleAccountNumbers.has(account.accountNumber)
+                              ? `Hide account number ending in ${formatAccountAlias(account.accountNumber)}`
+                              : `Show account number ending in ${formatAccountAlias(account.accountNumber)}`
+                          }
+                          title={
+                            visibleAccountNumbers.has(account.accountNumber)
+                              ? "Hide account number"
+                              : "Show account number"
+                          }
+                        >
+                          {visibleAccountNumbers.has(account.accountNumber) ? (
+                            <EyeOff size={14} />
+                          ) : (
+                            <Eye size={14} />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     {i === 1 ? <Landmark size={16} /> : <Wallet size={16} />}
                   </div>
@@ -542,7 +600,7 @@ export default function CustomerPage() {
                     <strong>{formatMoney(account.balance, account.currencyCode)}</strong>
                     <span>{account.status === "ACTIVE" ? (i === 1 ? "Market Active" : "+ 2.4% APY") : account.status}</span>
                   </div>
-                </button>
+                </article>
               ))}
             </div>
           )}
@@ -613,7 +671,7 @@ export default function CustomerPage() {
       </main>
 
       <footer className="vault-dashboard-footer">
-        <p>&copy; 2026 Vault Financial Services. All deposits are FDIC insured up to $250,000.</p>
+        <p>&copy; 2026 Vault Financial Services. Eligible deposits are protected under DICGC guidelines in India.</p>
         <div>
           <a href="#dashboard">Privacy Policy</a>
           <a href="#dashboard">Terms of Service</a>

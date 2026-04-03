@@ -12,6 +12,7 @@ import com.onlinebanking.model.CustomerProfile;
 import com.onlinebanking.model.UserRole;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
+import com.onlinebanking.util.IndiaMarketPolicy;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,11 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String ipAddress, String deviceFingerprint) {
+        String normalizedCountry = IndiaMarketPolicy.normalizeCountry(request.country());
+        if (!IndiaMarketPolicy.isSupportedCountry(normalizedCountry)) {
+            throw new BusinessException("Online banking registration is available only to customers in India");
+        }
+
         if (bankUserRepository.existsByUsernameIgnoreCase(request.username().trim())) {
             throw new DuplicateResourceException("Username already exists");
         }
@@ -80,7 +86,7 @@ public class AuthService {
                 request.city().trim(),
                 request.state().trim(),
                 request.postalCode().trim(),
-                request.country().trim(),
+                normalizedCountry,
                 request.dateOfBirth()
         ));
         auditService.log(savedUser.getUsername(), "USER_REGISTERED", "BankUser", String.valueOf(savedUser.getId()),

@@ -13,7 +13,9 @@ public record CreateTransferRequest(
         @NotBlank String fromAccountId,
         @NotBlank String beneficiaryId,
         @NotNull @DecimalMin(value = "0.01") BigDecimal amount,
-        @NotBlank @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be a 3-letter uppercase code") String currency,
+        @NotBlank
+        @Pattern(regexp = "^INR$", message = "Currency must be INR")
+        String currency,
         @NotBlank @Size(max = 255) String remarks,
         @NotNull TransactionChannel channel
 ) {

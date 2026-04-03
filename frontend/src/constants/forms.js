@@ -29,9 +29,9 @@ export const initialTransferForm = {
   fromAccountId: "",
   beneficiaryId: "",
   amount: "100.00",
-  currency: "USD",
+  currency: "INR",
   remarks: "",
-  channel: "WEB"
+  channel: "ONLINE_BANKING"
 };
 
 export const initialBeneficiaryForm = {

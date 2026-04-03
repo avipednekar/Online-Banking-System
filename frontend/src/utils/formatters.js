@@ -13,7 +13,13 @@ export function formatAddress(profile) {
 
 export function formatCurrency(value, currencyCode = "INR") {
   const amount = Number(value || 0);
-  return `${currencyCode} ${amount.toFixed(2)}`;
+  const normalizedCurrency = String(currencyCode || "INR").toUpperCase() === "INR" ? "INR" : "INR";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: normalizedCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
 }
 
 export function collectFieldErrors(fields = {}) {
@@ -30,5 +36,5 @@ export function formatDate(value) {
     return value;
   }
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-IN");
 }

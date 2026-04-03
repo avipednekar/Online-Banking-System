@@ -1,8 +1,5 @@
 export const countryOptions = [
-  { value: "India", label: "India" },
-  { value: "United States", label: "United States" },
-  { value: "United Kingdom", label: "United Kingdom" },
-  { value: "Singapore", label: "Singapore" }
+  { value: "India", label: "India" }
 ];
 
 export const assuranceMetrics = [

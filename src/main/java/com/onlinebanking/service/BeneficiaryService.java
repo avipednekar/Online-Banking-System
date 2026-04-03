@@ -16,6 +16,7 @@ import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
+import com.onlinebanking.util.IndiaMarketPolicy;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,6 +104,12 @@ public class BeneficiaryService {
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Beneficiary account not found"));
 
+        ensureIndiaResident(owner.getId());
+        ensureIndiaResident(account.getOwner().getId());
+        if (!IndiaMarketPolicy.isSupportedCurrency(account.getCurrencyCode())) {
+            throw new BusinessException("Beneficiary account must be denominated in INR");
+        }
+
         if (account.getOwner().getId().equals(owner.getId())) {
             throw new BusinessException("You cannot add your own account as a beneficiary");
         }
@@ -118,6 +125,14 @@ public class BeneficiaryService {
                 account.getStatus().name(),
                 INTERNAL_BANK_NAME
         );
+    }
+
+    private void ensureIndiaResident(Long userId) {
+        CustomerProfile profile = customerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
+        if (!IndiaMarketPolicy.isSupportedCountry(profile.getCountry())) {
+            throw new BusinessException("Beneficiary services are restricted to customers in India");
+        }
     }
 
     private String resolveAccountHolderName(String accountNumber) {

@@ -203,6 +203,25 @@ class BankingServiceIntegrationTest {
         assertEquals(1, bankingService.getAccountsForUser("priya").size());
     }
 
+    @Test
+    void registrationRejectsNonIndiaCountry() {
+        assertThrows(BusinessException.class,
+                () -> authService.register(registerRequest("rhea", "rhea@example.com", "United States")));
+    }
+
+    @Test
+    void depositRejectsLegacyNonIndiaProfile() {
+        Long samirId = authService.register(registerRequest("samir", "samir@example.com")).userId();
+        String accountNumber = submitAndApproveAccount("samir", samirId, AccountType.SAVINGS, "1200.00").approvedAccountNumber();
+
+        var profile = customerProfileRepository.findByUserUsernameIgnoreCase("samir").orElseThrow();
+        profile.setCountry("Singapore");
+        customerProfileRepository.save(profile);
+
+        assertThrows(BusinessException.class,
+                () -> bankingService.deposit("samir", accountNumber, new BigDecimal("100.00")));
+    }
+
     private long extractSequence(String accountNumber) {
         return Long.parseLong(accountNumber.substring(accountNumber.length() - 5));
     }
@@ -220,6 +239,10 @@ class BankingServiceIntegrationTest {
     }
 
     private RegisterRequest registerRequest(String username, String email) {
+        return registerRequest(username, email, "India");
+    }
+
+    private RegisterRequest registerRequest(String username, String email, String country) {
         return new RegisterRequest(
                 username,
                 email,
@@ -233,7 +256,7 @@ class BankingServiceIntegrationTest {
                 "Mumbai",
                 "Maharashtra",
                 "400001",
-                "India",
+                country,
                 LocalDate.of(1998, 1, 15)
         );
     }

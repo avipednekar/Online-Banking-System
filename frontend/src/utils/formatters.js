@@ -22,6 +22,28 @@ export function formatCurrency(value, currencyCode = "INR") {
   }).format(amount);
 }
 
+export function isCreditTransaction(entry) {
+  const type = String(entry?.type || "").toUpperCase();
+  if (type === "DEPOSIT" || type === "TRANSFER_IN") {
+    return true;
+  }
+  if (type === "WITHDRAWAL" || type === "TRANSFER_OUT") {
+    return false;
+  }
+
+  return Number(entry?.amount || 0) >= 0;
+}
+
+export function formatTransactionAmount(amount, entryOrIsCredit) {
+  const absoluteAmount = Math.abs(Number(amount || 0));
+  const isCredit =
+    typeof entryOrIsCredit === "boolean"
+      ? entryOrIsCredit
+      : isCreditTransaction(entryOrIsCredit);
+
+  return `${isCredit ? "+" : "-"} ${formatCurrency(absoluteAmount)}`;
+}
+
 export function collectFieldErrors(fields = {}) {
   return Object.values(fields).filter(Boolean);
 }

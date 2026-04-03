@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { accountTypeOptions } from "../constants/forms";
 import { useCustomerWorkspace } from "../hooks/useCustomerWorkspace";
+import { formatTransactionAmount, isCreditTransaction } from "../utils/formatters";
 
 const CUSTOMER_AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCnZuPDXz4R9CndRc6N7mJb4vbMuiJwkQkdVOFERnBUvDHOR-x-6O-mESC5WLwhpivI-CoYmMK1O-1ax_vJa8Jz4xbKwssaYR5zChMq1uQW2norEScAH5OGnbM_-3aLYqWZ9iMSE5fxjHsvMxzSUeInolWWZT2H4R4maaKc_xC_EyH5lcl3GiXObc-8lt7xHUSwSzEv1B2Bfa8r8u88YH4eGunGHO_YymzDzaig5-r18klE8CwfXlUxLUXfum4AZ5I67n1Jp3FH2TQB";
@@ -657,8 +658,15 @@ export default function CustomerPage() {
                         <td className="vault-dashboard-ref-cell">{entry.transactionReference || "—"}</td>
                         <td>{formatCompactDate(entry.createdAt)}</td>
                         <td><span className={`vault-dashboard-status-badge is-${getStatusTone(entry.status)}`}>{String(entry.status || "POSTED")}</span></td>
-                        <td className={`is-right ${p.className}`}>
-                          {Number(entry.amount) >= 0 ? "+" : "-"}{formatMoney(Math.abs(Number(entry.amount || 0)))}
+                        <td
+                          className={[
+                            "is-right",
+                            p.className,
+                            "font-semibold",
+                            isCreditTransaction(entry) ? "text-emerald-600" : "text-rose-600"
+                          ].join(" ")}
+                        >
+                          {formatTransactionAmount(entry.amount, entry)}
                         </td>
                       </tr>
                     );

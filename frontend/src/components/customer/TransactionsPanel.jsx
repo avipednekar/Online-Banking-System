@@ -4,6 +4,7 @@ import { SectionErrorState } from "../feedback/SectionErrorState";
 import { SubmitButton } from "../forms/SubmitButton";
 import { Panel } from "../ui/Panel";
 import { SectionHeader } from "../ui/SectionHeader";
+import { formatDate, formatTransactionAmount, isCreditTransaction } from "../../utils/formatters";
 
 export function TransactionsPanel({
   transactions,
@@ -59,9 +60,11 @@ export function TransactionsPanel({
         {transactions.map((entry) => (
           <article key={entry.id} className="transaction-card">
             <span>{entry.type}</span>
-            <strong>Rs {Number(entry.amount).toFixed(2)}</strong>
+            <strong className={isCreditTransaction(entry) ? "text-emerald-600" : "text-rose-600"}>
+              {formatTransactionAmount(entry.amount, entry)}
+            </strong>
             <p>{entry.description}</p>
-            <time>{new Date(entry.createdAt).toLocaleString()}</time>
+            <time>{formatDate(entry.createdAt)}</time>
           </article>
         ))}
       </div>

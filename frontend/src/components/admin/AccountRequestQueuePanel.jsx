@@ -38,21 +38,17 @@ export const AccountRequestQueuePanel = memo(function AccountRequestQueuePanel({
 }) {
   return (
     <Panel className="vault-admin-panel vault-admin-approvals-panel min-w-0 w-full rounded-[24px] p-4">
-      <SectionHeader
-        title="Pending Approvals"
-        subtitle="Customer account requests awaiting explicit administrative approval."
-        action={
-          <SubmitButton
-            type="button"
-            variant="secondary"
-            isLoading={isLoading}
-            idleLabel="Refresh queue"
-            loadingLabel="Refreshing..."
-            onClick={onRefresh}
-            disabled={isLoading || isMutating}
-          />
-        }
-      />
+      <div className="vault-admin-panel-toolbar">
+        <SubmitButton
+          type="button"
+          variant="secondary"
+          isLoading={isLoading}
+          idleLabel="Refresh queue"
+          loadingLabel="Refreshing..."
+          onClick={onRefresh}
+          disabled={isLoading || isMutating}
+        />
+      </div>
 
       {isLoading ? (
         <LoadingState compact title="Loading requests" message="Fetching account requests awaiting approval." />

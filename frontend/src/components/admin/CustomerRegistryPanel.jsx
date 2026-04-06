@@ -6,7 +6,6 @@ import { SectionErrorState } from "../feedback/SectionErrorState";
 import { SubmitButton } from "../forms/SubmitButton";
 import { FormField } from "../forms/FormField";
 import { Panel } from "../ui/Panel";
-import { SectionHeader } from "../ui/SectionHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 
 function getInitials(value) {
@@ -111,21 +110,17 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
 }) {
   return (
     <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
-      <SectionHeader
-        title={title}
-        subtitle={subtitle}
-        action={
-          <SubmitButton
-            type="button"
-            variant="secondary"
-            isLoading={isLoading}
-            idleLabel="Refresh registry"
-            loadingLabel="Refreshing..."
-            onClick={onRefresh}
-            disabled={isLoading || isMutating}
-          />
-        }
-      />
+      <div className="vault-admin-panel-toolbar">
+        <SubmitButton
+          type="button"
+          variant="secondary"
+          isLoading={isLoading}
+          idleLabel="Refresh registry"
+          loadingLabel="Refreshing..."
+          onClick={onRefresh}
+          disabled={isLoading || isMutating}
+        />
+      </div>
 
       <div className="vault-admin-registry-toolbar min-w-0">
         <FormField

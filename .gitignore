@@ -7,6 +7,8 @@ frontend/dist/
 frontend/.env
 frontend/Design/
 .vscode/
+postman/
+load-tests/
 
 # Secrets — never commit these
 .env

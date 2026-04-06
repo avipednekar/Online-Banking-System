@@ -4,8 +4,8 @@ export const adminService = {
   getOverview(token) {
     return apiRequest("/admin/overview", { token });
   },
-  getCustomers(token) {
-    return apiRequest("/admin/customers", { token });
+  getCustomers(token, page = 0, size = 20) {
+    return apiRequest(`/admin/customers?page=${page}&size=${size}`, { token });
   },
   getAccountRequests(token) {
     return apiRequest("/admin/account-requests", { token });

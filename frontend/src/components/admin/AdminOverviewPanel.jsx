@@ -52,7 +52,6 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
     <Panel className="vault-admin-panel vault-admin-overview-panel min-w-0 rounded-[24px] p-4 sm:p-4">
       <SectionHeader
         title="Institution overview"
-        subtitle="Real-time visibility into operational load, KYC posture, and onboarding approvals."
         action={
           <SubmitButton
             type="button"

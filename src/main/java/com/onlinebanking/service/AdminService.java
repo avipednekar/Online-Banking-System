@@ -1,8 +1,16 @@
 package com.onlinebanking.service;
 
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+
+import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.AdminCustomerResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
-import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.exception.ResourceNotFoundException;
@@ -10,21 +18,15 @@ import com.onlinebanking.model.AccountOpeningRequest;
 import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.BeneficiaryStatus;
-import com.onlinebanking.model.CustomerProfile;
+import com.onlinebanking.model.CustomerProfile; 
 import com.onlinebanking.model.KycStatus;
 import com.onlinebanking.repository.AccountOpeningRequestRepository;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
-import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
+import jakarta.transaction.Transactional;
 
 @Service
 public class AdminService {

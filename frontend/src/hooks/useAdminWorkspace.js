@@ -95,7 +95,7 @@ export function useAdminWorkspace() {
     setCustomersError("");
     try {
       const accessToken = await getValidAccessToken();
-      const data = await adminService.getCustomers(accessToken);
+      const data = await adminService.getCustomers(accessToken, 0, 1000);
       setCustomers(Array.isArray(data) ? data : data.content || []);
     } catch (error) {
       if (!handleSessionError(error, "Unable to load customer registry")) {
@@ -123,9 +123,27 @@ export function useAdminWorkspace() {
   }
 
   useEffect(() => {
-    loadOverview();
-    loadCustomers();
-    loadAccountRequests();
+    let cancelled = false;
+
+    async function init() {
+      try {
+        await Promise.allSettled([
+          loadOverview(),
+          loadCustomers(),
+          loadAccountRequests()
+        ]);
+      } catch {
+        /* individual loaders handle their own errors */
+      }
+    }
+
+    if (!cancelled) {
+      init();
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function logoutUser() {

@@ -5396,7 +5396,7 @@ select:focus {
 .vault-admin-virtual-shell {
   border: 1px solid rgba(223, 228, 236, 0.95);
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(247, 249, 251, 0.98);
 }
 
@@ -5414,6 +5414,19 @@ select:focus {
   grid-template-columns: minmax(170px, 1.2fr) minmax(180px, 1.35fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(120px, 0.8fr);
 }
 
+.vault-admin-virtual-header.is-actionable {
+  grid-template-columns: minmax(180px, 1.15fr) minmax(180px, 1.2fr) minmax(150px, 1fr) minmax(150px, 0.9fr) minmax(280px, 1.7fr);
+}
+
+.vault-admin-virtual-header.is-kyc,
+.vault-admin-grid-row,
+.vault-admin-grid-row.is-skeleton {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.15fr) minmax(180px, 1.35fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(210px, 1.1fr);
+  gap: 0.85rem;
+  align-items: center;
+}
+
 .vault-admin-virtual-header {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid rgba(223, 228, 236, 0.9);
@@ -5429,6 +5442,12 @@ select:focus {
   width: 100%;
 }
 
+.vault-admin-grid-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
 .vault-admin-virtual-row-wrap {
   padding: 0.55rem 0.75rem;
 }
@@ -5437,11 +5456,31 @@ select:focus {
   width: 100%;
   min-width: 0;
   padding: 0.95rem 1rem;
+  min-height: 80px;
   border: 1px solid rgba(225, 230, 238, 0.95);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.98);
   text-align: left;
   cursor: pointer;
+}
+
+.vault-admin-virtual-row:not(.is-summary) {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: nowrap;
+}
+
+.vault-admin-virtual-row:not(.is-summary) > .vault-admin-virtual-user {
+  flex: 1.15 1 0;
+}
+
+.vault-admin-virtual-row:not(.is-summary) > .vault-admin-virtual-cell {
+  flex: 1 1 0;
+}
+
+.vault-admin-virtual-row:not(.is-summary) > .vault-admin-virtual-actions {
+  flex: 1.45 1 0;
 }
 
 .vault-admin-virtual-row:hover {
@@ -5454,10 +5493,33 @@ select:focus {
   outline-offset: 2px;
 }
 
+.vault-admin-grid-row {
+  min-width: 0;
+  min-height: 80px;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(225, 230, 238, 0.95);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  text-align: left;
+  cursor: pointer;
+}
+
+.vault-admin-grid-row:hover {
+  background: rgba(252, 253, 255, 0.99);
+  border-color: rgba(117, 141, 213, 0.28);
+}
+
+.vault-admin-grid-row:focus-visible {
+  outline: 2px solid rgba(117, 141, 213, 0.8);
+  outline-offset: 2px;
+}
+
 .vault-admin-virtual-user,
 .vault-admin-virtual-cell,
 .vault-admin-virtual-actions,
-.vault-admin-virtual-buttons {
+.vault-admin-virtual-buttons,
+.vault-admin-grid-actions,
+.vault-admin-grid-action-buttons {
   display: flex;
   min-width: 0;
 }
@@ -5514,10 +5576,61 @@ select:focus {
   align-items: stretch;
 }
 
+.vault-admin-virtual-actions.is-kyc {
+  justify-content: center;
+}
+
 .vault-admin-virtual-buttons {
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+}
+
+.vault-admin-grid-actions {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.vault-admin-grid-action-buttons {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.vault-admin-grid-actions .kyc-pill {
+  flex-shrink: 0;
+}
+
+.vault-admin-action-group,
+.vault-admin-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.vault-admin-action-group {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.vault-admin-action-buttons {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.vault-admin-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.vault-admin-action-state {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .vault-admin-virtual-buttons .vault-admin-inline-button {
@@ -5691,6 +5804,36 @@ select:focus {
     grid-template-columns: minmax(180px, 1.5fr) minmax(140px, 1fr) minmax(170px, 1fr);
   }
 
+  .vault-admin-virtual-header.is-actionable {
+    grid-template-columns: minmax(160px, 1fr) minmax(170px, 1.1fr) minmax(130px, 0.9fr) minmax(140px, 0.9fr) minmax(240px, 1.4fr);
+  }
+
+  .vault-admin-virtual-header.is-kyc,
+  .vault-admin-grid-row,
+  .vault-admin-grid-row.is-skeleton {
+    grid-template-columns: minmax(160px, 1fr) minmax(170px, 1.1fr) minmax(130px, 0.9fr) minmax(140px, 0.95fr) minmax(120px, 0.8fr) minmax(200px, 1fr);
+  }
+
+  .vault-admin-virtual-row:not(.is-summary) {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .vault-admin-virtual-row:not(.is-summary) > .vault-admin-virtual-actions {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .vault-admin-action-group {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .vault-admin-grid-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .vault-admin-virtual-header span:nth-child(4),
   .vault-admin-virtual-header span:nth-child(5),
   .vault-admin-virtual-row > :nth-child(4),
@@ -5711,9 +5854,17 @@ select:focus {
   }
 
   .vault-admin-virtual-row,
-  .vault-admin-skeleton-row {
+  .vault-admin-skeleton-row,
+  .vault-admin-grid-row,
+  .vault-admin-grid-row.is-skeleton {
     grid-template-columns: 1fr;
     gap: 0.7rem;
+  }
+
+  .vault-admin-virtual-row:not(.is-summary) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .vault-admin-virtual-row-wrap {
@@ -5724,11 +5875,35 @@ select:focus {
     padding: 0.9rem;
   }
 
+  .vault-admin-grid-row {
+    padding: 0.9rem;
+  }
+
   .vault-admin-virtual-buttons,
   .vault-admin-pager,
   .vault-admin-virtual-meta {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .vault-admin-action-group,
+  .vault-admin-action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vault-admin-grid-actions,
+  .vault-admin-grid-action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .vault-admin-action,
+  .vault-admin-virtual-buttons .vault-admin-primary-button,
+  .vault-admin-grid-action-buttons .vault-admin-action {
+    width: 100%;
+    justify-content: center;
   }
 
   .vault-admin-virtual-buttons .vault-admin-primary-button,

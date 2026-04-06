@@ -45,37 +45,6 @@ function RequestStatusBadge({ status }) {
   );
 }
 
-function KycActionState({ customer, actionable }) {
-  const status = String(customer?.kycStatus || "").toUpperCase();
-  const stateClass =
-    status === "VERIFIED"
-      ? "is-verified"
-      : status === "REJECTED"
-        ? "is-rejected"
-        : "is-pending";
-
-  const label =
-    status === "VERIFIED"
-      ? "Verification completed"
-      : status === "REJECTED"
-        ? "Verification rejected"
-        : "Awaiting review";
-
-  const description =
-    status === "PENDING"
-      ? actionable
-        ? "Choose approve or reject to complete this review."
-        : "Review this customer from the dedicated KYC queue."
-      : "No further KYC action is available.";
-
-  return (
-    <div className={`vault-admin-action-state ${stateClass}`}>
-      <strong>{label}</strong>
-      <span>{description}</span>
-    </div>
-  );
-}
-
 const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
   customer,
   relatedRequest,
@@ -173,24 +142,40 @@ const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
   );
 });
 
-const RegistrySkeletonRows = memo(function RegistrySkeletonRows({ count = 6 }) {
+const RegistrySkeletonRows = memo(function RegistrySkeletonRows({
+  count = 6,
+  isKycQueueLayout = false
+}) {
   return (
-    <div className="vault-admin-virtual-shell is-skeleton">
-      <div className="vault-admin-virtual-header">
+    <div
+      className={
+        isKycQueueLayout ? "vault-admin-virtual-shell is-kyc" : "vault-admin-virtual-shell is-summary"
+      }
+    >
+      <div
+        className={
+          isKycQueueLayout ? "vault-admin-virtual-header is-kyc" : "vault-admin-virtual-header is-summary"
+        }
+      >
         <span>Name</span>
         <span>Email</span>
         <span>Phone</span>
         <span>Location</span>
         <span>Status</span>
+        {isKycQueueLayout ? <span>Actions</span> : null}
       </div>
-      <div className="vault-admin-skeleton-list">
+      <div className={isKycQueueLayout ? "vault-admin-grid-list is-skeleton" : "vault-admin-skeleton-list"}>
         {Array.from({ length: count }).map((_, index) => (
-          <div key={index} className="vault-admin-skeleton-row">
+          <div
+            key={index}
+            className={isKycQueueLayout ? "vault-admin-grid-row is-skeleton" : "vault-admin-skeleton-row"}
+          >
             <span />
             <span />
             <span />
             <span />
             <span />
+            {isKycQueueLayout ? <span /> : null}
           </div>
         ))}
       </div>
@@ -198,12 +183,43 @@ const RegistrySkeletonRows = memo(function RegistrySkeletonRows({ count = 6 }) {
   );
 });
 
-const CustomerRow = memo(function CustomerRow({ index, style, data }) {
-  const customer = data.customers[index];
-  const relatedRequest = data.getPendingRequestForCustomer(customer.userId);
-  const kycPending = data.isKycPending(customer);
+function SummaryCells({ customer }) {
   const addressSummary = [customer.city, customer.state].filter(Boolean).join(", ");
-  const isSummaryOnly = data.summaryOnly;
+
+  return (
+    <>
+      <div className="vault-admin-virtual-user">
+        <div className="vault-admin-registry-avatar">
+          {getInitials(customer.fullName || customer.username)}
+        </div>
+        <div className="vault-admin-registry-copy">
+          <strong title={customer.fullName}>{customer.fullName}</strong>
+        </div>
+      </div>
+
+      <div className="vault-admin-virtual-cell">
+        <strong title={customer.email}>{customer.email}</strong>
+      </div>
+
+      <div className="vault-admin-virtual-cell">
+        <strong title={customer.phoneNumber || "No phone number"}>
+          <Phone size={14} />
+          {customer.phoneNumber || "No phone"}
+        </strong>
+      </div>
+
+      <div className="vault-admin-virtual-cell">
+        <strong title={addressSummary || "No location captured"}>
+          <MapPin size={14} />
+          {addressSummary || "No location"}
+        </strong>
+      </div>
+    </>
+  );
+}
+
+const KycGridRow = memo(function KycGridRow({ customer, data }) {
+  const relatedRequest = data.getPendingRequestForCustomer(customer.userId);
 
   const handleOpenDetail = useCallback(async () => {
     await data.onOpenCustomer(customer.userId);
@@ -225,20 +241,63 @@ const CustomerRow = memo(function CustomerRow({ index, style, data }) {
     [customer.userId, data]
   );
 
-  const handleApproveAccount = useCallback(
-    (event) => {
-      event.stopPropagation();
-      if (relatedRequest) {
-        data.onApproveAccount(relatedRequest.id);
-      }
-    },
-    [data, relatedRequest]
+  return (
+    <article
+      className="vault-admin-grid-row"
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        void handleOpenDetail();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          void handleOpenDetail();
+        }
+      }}
+    >
+      <SummaryCells customer={customer} />
+
+      <div className="vault-admin-virtual-cell">
+        <StatusBadge status={customer.kycStatus} />
+      </div>
+
+      <div className="vault-admin-grid-actions">
+        <div className="vault-admin-grid-action-buttons">
+          <button
+            type="button"
+            className="vault-admin-action is-approve"
+            onClick={handleApproveKyc}
+            disabled={data.isMutating}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            className="vault-admin-action is-reject"
+            onClick={handleRejectKyc}
+            disabled={data.isMutating}
+          >
+            Reject
+          </button>
+        </div>
+        {relatedRequest ? <RequestStatusBadge status={relatedRequest.status} /> : null}
+      </div>
+    </article>
   );
+});
+
+const VirtualCustomerRow = memo(function VirtualCustomerRow({ index, style, data }) {
+  const customer = data.customers[index];
+
+  const handleOpenDetail = useCallback(async () => {
+    await data.onOpenCustomer(customer.userId);
+  }, [customer.userId, data]);
 
   return (
     <div style={style} className="vault-admin-virtual-row-wrap">
       <article
-        className={isSummaryOnly ? "vault-admin-virtual-row is-summary" : "vault-admin-virtual-row"}
+        className="vault-admin-virtual-row is-summary"
         role="button"
         tabIndex={0}
         onClick={() => {
@@ -251,99 +310,10 @@ const CustomerRow = memo(function CustomerRow({ index, style, data }) {
           }
         }}
       >
-        <div className="vault-admin-virtual-user">
-          <div className="vault-admin-registry-avatar">
-            {getInitials(customer.fullName || customer.username)}
-          </div>
-          <div className="vault-admin-registry-copy">
-            <strong title={customer.fullName}>{customer.fullName}</strong>
-          </div>
-        </div>
-
+        <SummaryCells customer={customer} />
         <div className="vault-admin-virtual-cell">
-          <strong title={customer.email}>{customer.email}</strong>
+          <StatusBadge status={customer.kycStatus} />
         </div>
-
-        <div className="vault-admin-virtual-cell">
-          <strong title={customer.phoneNumber || "No phone number"}>
-            <Phone size={14} />
-            {customer.phoneNumber || "No phone"}
-          </strong>
-        </div>
-
-        <div className="vault-admin-virtual-cell">
-          <strong title={addressSummary || "No location captured"}>
-            <MapPin size={14} />
-            {addressSummary || "No location"}
-          </strong>
-        </div>
-
-        {isSummaryOnly ? (
-          <div className="vault-admin-virtual-cell">
-            <StatusBadge status={customer.kycStatus} />
-          </div>
-        ) : (
-          <>
-            <div className="vault-admin-virtual-cell">
-              <StatusBadge status={customer.kycStatus} />
-              {data.showRequestMeta && relatedRequest ? (
-                <div className="vault-admin-request-meta">
-                  <RequestStatusBadge status={relatedRequest.status} />
-                  <small title={`${relatedRequest.accountType} ${formatCurrency(relatedRequest.openingBalance)}`}>
-                    {relatedRequest.accountType} - {formatCurrency(relatedRequest.openingBalance)}
-                  </small>
-                </div>
-              ) : (
-                <small>{data.showRequestMeta ? "No pending account request" : customer.customerId}</small>
-              )}
-            </div>
-
-            <div className="vault-admin-virtual-actions">
-              {kycPending ? (
-                data.showKycActions ? (
-                  <div className="vault-admin-action-group">
-                    <div className="vault-admin-action-buttons">
-                      <button
-                        type="button"
-                        className="vault-admin-action is-approve"
-                        onClick={handleApproveKyc}
-                        disabled={data.isMutating}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="vault-admin-action is-reject"
-                        onClick={handleRejectKyc}
-                        disabled={data.isMutating}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                    <KycActionState customer={customer} actionable />
-                  </div>
-                ) : (
-                  <KycActionState customer={customer} actionable={false} />
-                )
-              ) : (
-                <KycActionState customer={customer} actionable={false} />
-              )}
-
-              <div className="vault-admin-virtual-buttons">
-                {data.showAccountActions && relatedRequest ? (
-                  <button
-                    type="button"
-                    className="vault-admin-primary-button"
-                    onClick={handleApproveAccount}
-                    disabled={data.isMutating}
-                  >
-                    Approve account
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </>
-        )}
       </article>
     </div>
   );
@@ -364,11 +334,11 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   isMutating,
   showKycActions = true,
   showAccountActions = true,
-  showRequestMeta = true,
   page,
   pageSize,
   totalPages,
   totalElements,
+  showPanelCopy = true,
   selectedCustomerId,
   selectedCustomerDetail,
   selectedCustomerError,
@@ -379,25 +349,27 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   onPageSizeChange,
   onApproveKyc,
   onRejectKyc,
-  onApproveAccount,
   onOpenCustomer,
   onCloseDetail,
-  getPendingRequestForCustomer,
-  isKycPending
+  getPendingRequestForCustomer
 }) {
   const [rowHeight, setRowHeight] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth < 768 ? 188 : 116
+    typeof window !== "undefined" && window.innerWidth < 768 ? 136 : 104
   );
-  const summaryOnly = !showKycActions && !showAccountActions;
+  const isKycQueueLayout = showKycActions && !showAccountActions;
 
   useEffect(() => {
+    if (isKycQueueLayout) {
+      return undefined;
+    }
+
     function updateRowHeight() {
       if (window.innerWidth < 768) {
-        setRowHeight(summaryOnly ? 136 : 188);
+        setRowHeight(136);
         return;
       }
 
-      setRowHeight(window.innerWidth < 1040 ? (summaryOnly ? 104 : 142) : 104);
+      setRowHeight(104);
     }
 
     updateRowHeight();
@@ -405,7 +377,7 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
     return () => {
       window.removeEventListener("resize", updateRowHeight);
     };
-  }, [summaryOnly]);
+  }, [isKycQueueLayout]);
 
   const listHeight = useMemo(() => {
     if (!customers.length) {
@@ -417,32 +389,13 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   const itemData = useMemo(
     () => ({
       customers,
-      showKycActions,
-      showAccountActions,
-      showRequestMeta,
-      summaryOnly,
       isMutating,
       onApproveKyc,
       onRejectKyc,
-      onApproveAccount,
       onOpenCustomer,
-      getPendingRequestForCustomer,
-      isKycPending
+      getPendingRequestForCustomer
     }),
-    [
-      customers,
-      getPendingRequestForCustomer,
-      isKycPending,
-      isMutating,
-      onApproveAccount,
-      onApproveKyc,
-      onOpenCustomer,
-      onRejectKyc,
-      showAccountActions,
-      showKycActions,
-      showRequestMeta,
-      summaryOnly
-    ]
+    [customers, getPendingRequestForCustomer, isMutating, onApproveKyc, onOpenCustomer, onRejectKyc]
   );
 
   const selectedRequest = selectedCustomerDetail
@@ -455,10 +408,12 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   return (
     <>
       <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
-        <div className="vault-admin-panel-copy">
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
+        {showPanelCopy ? (
+          <div className="vault-admin-panel-copy">
+            <h2>{title}</h2>
+            <p>{subtitle}</p>
+          </div>
+        ) : null}
 
         <div className="vault-admin-registry-toolbar min-w-0">
           <FormField
@@ -484,13 +439,13 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
           <span>
             {isLoading && hasLoadedOnce
               ? "Refreshing data..."
-              : summaryOnly
-                ? "Status overview"
-                : actionColumnLabel}
+              : isKycQueueLayout
+                ? "KYC actions"
+                : "Status overview"}
           </span>
         </div>
 
-        {showInitialSkeleton ? <RegistrySkeletonRows /> : null}
+        {showInitialSkeleton ? <RegistrySkeletonRows isKycQueueLayout={isKycQueueLayout} /> : null}
 
         {error ? (
           <SectionErrorState
@@ -507,28 +462,47 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
 
         {showList ? (
           <>
-            <div className={summaryOnly ? "vault-admin-virtual-shell is-summary" : "vault-admin-virtual-shell"}>
-              <div className={summaryOnly ? "vault-admin-virtual-header is-summary" : "vault-admin-virtual-header"}>
-                <span>Name</span>
-                <span>Email</span>
-                <span>Phone</span>
-                <span>Location</span>
-                <span>{summaryOnly ? "Status" : actionColumnLabel}</span>
-              </div>
+            {isKycQueueLayout ? (
+              <div className="vault-admin-virtual-shell is-kyc">
+                <div className="vault-admin-virtual-header is-kyc">
+                  <span>Name</span>
+                  <span>Email</span>
+                  <span>Phone</span>
+                  <span>Location</span>
+                  <span>Status</span>
+                  <span>{actionColumnLabel}</span>
+                </div>
 
-              <List
-                className="vault-admin-virtual-list"
-                height={listHeight}
-                itemCount={customers.length}
-                itemData={itemData}
-                itemSize={rowHeight}
-                itemKey={(index, data) => data.customers[index]?.userId ?? index}
-                overscanCount={4}
-                width="100%"
-              >
-                {CustomerRow}
-              </List>
-            </div>
+                <div className="vault-admin-grid-list">
+                  {customers.map((customer) => (
+                    <KycGridRow key={customer.userId} customer={customer} data={itemData} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="vault-admin-virtual-shell is-summary">
+                <div className="vault-admin-virtual-header is-summary">
+                  <span>Name</span>
+                  <span>Email</span>
+                  <span>Phone</span>
+                  <span>Location</span>
+                  <span>Status</span>
+                </div>
+
+                <List
+                  className="vault-admin-virtual-list"
+                  height={listHeight}
+                  itemCount={customers.length}
+                  itemData={itemData}
+                  itemSize={rowHeight}
+                  itemKey={(index, data) => data.customers[index]?.userId ?? index}
+                  overscanCount={4}
+                  width="100%"
+                >
+                  {VirtualCustomerRow}
+                </List>
+              </div>
+            )}
 
             <div className="vault-admin-pager">
               <span>

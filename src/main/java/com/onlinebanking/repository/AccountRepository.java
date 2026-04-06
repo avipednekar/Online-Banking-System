@@ -17,4 +17,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     List<Account> findByOwnerIdOrderByCreatedAtAsc(Long ownerId);
 
     List<Account> findByOwnerUsernameIgnoreCaseOrderByCreatedAtAsc(String username);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Account a SET a.balance = :balance, a.updatedAt = CURRENT_TIMESTAMP WHERE a.accountId = :accountId")
+    void updateBalance(@org.springframework.data.repository.query.Param("accountId") String accountId, @org.springframework.data.repository.query.Param("balance") java.math.BigDecimal balance);
 }

@@ -21,6 +21,7 @@ export default function KycManagementPage() {
         emptyMessage="All customer profiles are currently verified, rejected, or awaiting new submissions."
         actionColumnLabel="KYC Action"
         searchPlaceholder="Search pending KYC by username, customer ID, email, or phone"
+        showPanelCopy={false}
         customers={workspace.customers}
         searchDraft={workspace.customerSearchDraft}
         isLoading={customersBusy}

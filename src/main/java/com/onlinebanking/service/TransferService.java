@@ -196,10 +196,8 @@ public class TransferService {
         accountBalanceRepository.save(fromBalance);
         accountBalanceRepository.save(toBalance);
 
-        fromAccount.setBalance(fromBalance.getAvailableBalance());
-        toAccount.setBalance(toBalance.getAvailableBalance());
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
+        accountRepository.updateBalance(fromAccount.getAccountId(), fromBalance.getAvailableBalance());
+        accountRepository.updateBalance(toAccount.getAccountId(), toBalance.getAvailableBalance());
 
         ledgerPostingRepository.save(new LedgerPosting(
                 postingBatch,

@@ -1,12 +1,19 @@
-import { memo } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { FixedSizeList as List } from "react-window";
+import { ChevronLeft, ChevronRight, Eye, MapPin, Phone } from "lucide-react";
 import { formatAddress, formatCurrency, formatDate } from "../../utils/formatters";
 import { EmptyState } from "../feedback/EmptyState";
-import { LoadingState } from "../feedback/LoadingState";
 import { SectionErrorState } from "../feedback/SectionErrorState";
 import { SubmitButton } from "../forms/SubmitButton";
 import { FormField } from "../forms/FormField";
 import { Panel } from "../ui/Panel";
 import { StatusBadge } from "../ui/StatusBadge";
+
+const PAGE_SIZE_OPTIONS = [
+  { value: "20", label: "20 / page" },
+  { value: "25", label: "25 / page" },
+  { value: "50", label: "50 / page" }
+];
 
 function getInitials(value) {
   return String(value || "Customer")
@@ -36,21 +43,6 @@ function RequestStatusBadge({ status }) {
     <span className={`kyc-pill ${getRequestStatusTone(status)}`}>
       {String(status || "PENDING").replace(/_/g, " ")}
     </span>
-  );
-}
-
-function CustomerUserCell({ customer }) {
-  return (
-    <div className="vault-admin-user-cell">
-      <div className="vault-admin-registry-avatar">
-        {getInitials(customer.fullName || customer.username)}
-      </div>
-      <div className="vault-admin-registry-copy">
-        <strong>{customer.fullName}</strong>
-        <span>{customer.email}</span>
-        <small>@{customer.username}</small>
-      </div>
-    </div>
   );
 }
 
@@ -85,195 +77,502 @@ function KycActionState({ customer, actionable }) {
   );
 }
 
+const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
+  customer,
+  relatedRequest,
+  error,
+  isLoading,
+  onClose
+}) {
+  if (!customer && !isLoading && !error) {
+    return null;
+  }
+
+  return (
+    <div className="vault-admin-detail-overlay" role="presentation" onClick={onClose}>
+      <aside
+        className="vault-admin-detail-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Customer detail"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="vault-admin-detail-head">
+          <div>
+            <p className="vault-admin-detail-eyebrow">Customer detail</p>
+            <h3>{customer?.fullName || "Loading customer"}</h3>
+            <span>@{customer?.username || "customer"}</span>
+          </div>
+          <button type="button" className="vault-admin-inline-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="vault-admin-detail-loading">
+            <span className="inline-spinner" aria-hidden="true" />
+            <p>Loading customer profile…</p>
+          </div>
+        ) : null}
+
+        {error ? (
+          <SectionErrorState message={error} />
+        ) : null}
+
+        {customer && !isLoading && !error ? (
+          <div className="vault-admin-detail-body">
+            <div className="vault-admin-detail-grid">
+              <div>
+                <span>Email</span>
+                <strong>{customer.email}</strong>
+              </div>
+              <div>
+                <span>Phone</span>
+                <strong>{customer.phoneNumber || "Not available"}</strong>
+              </div>
+              <div>
+                <span>DOB</span>
+                <strong>{formatDate(customer.dateOfBirth)}</strong>
+              </div>
+              <div>
+                <span>Occupation</span>
+                <strong>{customer.occupation || "Not available"}</strong>
+              </div>
+              <div>
+                <span>Gender</span>
+                <strong>{customer.gender || "Not available"}</strong>
+              </div>
+              <div>
+                <span>KYC</span>
+                <strong>{customer.kycStatus}</strong>
+              </div>
+            </div>
+
+            <div className="vault-admin-detail-section">
+              <span>Registered address</span>
+              <p>{formatAddress(customer) || "No address captured"}</p>
+            </div>
+
+            <div className="vault-admin-detail-section">
+              <span>Identifiers</span>
+              <p>Customer ID: {customer.customerId}</p>
+              <p>Username: @{customer.username}</p>
+            </div>
+
+            {relatedRequest ? (
+              <div className="vault-admin-detail-section">
+                <span>Pending account request</span>
+                <p>
+                  {relatedRequest.accountType} request for{" "}
+                  {formatCurrency(relatedRequest.openingBalance)}
+                </p>
+                <RequestStatusBadge status={relatedRequest.status} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </aside>
+    </div>
+  );
+});
+
+const RegistrySkeletonRows = memo(function RegistrySkeletonRows({ count = 6 }) {
+  return (
+    <div className="vault-admin-virtual-shell is-skeleton">
+      <div className="vault-admin-virtual-header">
+        <span>User</span>
+        <span>Contact</span>
+        <span>Location</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+      <div className="vault-admin-skeleton-list">
+        {Array.from({ length: count }).map((_, index) => (
+          <div key={index} className="vault-admin-skeleton-row">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const CustomerRow = memo(function CustomerRow({ index, style, data }) {
+  const customer = data.customers[index];
+  const relatedRequest = data.getPendingRequestForCustomer(customer.userId);
+  const kycPending = data.isKycPending(customer);
+  const addressSummary = [customer.city, customer.state].filter(Boolean).join(", ");
+
+  const handleOpenDetail = useCallback(() => {
+    data.onOpenCustomer(customer.userId);
+  }, [customer.userId, data]);
+
+  const handleApproveKyc = useCallback(
+    (event) => {
+      event.stopPropagation();
+      data.onApproveKyc(customer.userId);
+    },
+    [customer.userId, data]
+  );
+
+  const handleRejectKyc = useCallback(
+    (event) => {
+      event.stopPropagation();
+      data.onRejectKyc(customer.userId);
+    },
+    [customer.userId, data]
+  );
+
+  const handleApproveAccount = useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (relatedRequest) {
+        data.onApproveAccount(relatedRequest.id);
+      }
+    },
+    [data, relatedRequest]
+  );
+
+  return (
+    <div style={style} className="vault-admin-virtual-row-wrap">
+      <article
+        className="vault-admin-virtual-row"
+        role="button"
+        tabIndex={0}
+        onClick={handleOpenDetail}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleOpenDetail();
+          }
+        }}
+      >
+        <div className="vault-admin-virtual-user">
+          <div className="vault-admin-registry-avatar">
+            {getInitials(customer.fullName || customer.username)}
+          </div>
+          <div className="vault-admin-registry-copy">
+            <strong title={customer.fullName}>{customer.fullName}</strong>
+            <span title={customer.email}>{customer.email}</span>
+            <small>@{customer.username}</small>
+          </div>
+        </div>
+
+        <div className="vault-admin-virtual-cell">
+          <strong title={customer.phoneNumber || "No phone number"}>
+            <Phone size={14} />
+            {customer.phoneNumber || "No phone"}
+          </strong>
+          <span>{customer.customerId}</span>
+        </div>
+
+        <div className="vault-admin-virtual-cell">
+          <strong title={addressSummary || "No location captured"}>
+            <MapPin size={14} />
+            {addressSummary || "No location"}
+          </strong>
+          <span>{customer.city || "City unavailable"}</span>
+        </div>
+
+        <div className="vault-admin-virtual-cell">
+          <StatusBadge status={customer.kycStatus} />
+          {data.showRequestMeta && relatedRequest ? (
+            <div className="vault-admin-request-meta">
+              <RequestStatusBadge status={relatedRequest.status} />
+              <small title={`${relatedRequest.accountType} ${formatCurrency(relatedRequest.openingBalance)}`}>
+                {relatedRequest.accountType} • {formatCurrency(relatedRequest.openingBalance)}
+              </small>
+            </div>
+          ) : (
+            <small>{data.showRequestMeta ? "No pending account request" : customer.customerId}</small>
+          )}
+        </div>
+
+        <div className="vault-admin-virtual-actions">
+          {kycPending ? (
+            data.showKycActions ? (
+              <div className="vault-admin-action-group">
+                <div className="vault-admin-action-buttons">
+                  <button
+                    type="button"
+                    className="vault-admin-action is-approve"
+                    onClick={handleApproveKyc}
+                    disabled={data.isMutating}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="vault-admin-action is-reject"
+                    onClick={handleRejectKyc}
+                    disabled={data.isMutating}
+                  >
+                    Reject
+                  </button>
+                </div>
+                <KycActionState customer={customer} actionable />
+              </div>
+            ) : (
+              <KycActionState customer={customer} actionable={false} />
+            )
+          ) : (
+            <KycActionState customer={customer} actionable={false} />
+          )}
+
+          <div className="vault-admin-virtual-buttons">
+            <button
+              type="button"
+              className="vault-admin-inline-button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpenDetail();
+              }}
+            >
+              <Eye size={14} />
+              View details
+            </button>
+
+            {data.showAccountActions && relatedRequest ? (
+              <button
+                type="button"
+                className="vault-admin-primary-button"
+                onClick={handleApproveAccount}
+                disabled={data.isMutating}
+              >
+                Approve account
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+});
+
 export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   title = "Customer Registry",
   subtitle = "Manage institution-wide identity verification and account onboarding actions.",
   emptyTitle = "No customer profiles found",
   emptyMessage = "Newly registered customers will appear here for KYC review.",
-  searchPlaceholder = "Search by username, name, email, phone, or KYC status",
+  searchPlaceholder = "Search by username, customer ID, email, phone, or KYC status",
   actionColumnLabel = "Administrative Action",
   customers,
-  searchTerm,
+  searchDraft,
   isLoading,
+  hasLoadedOnce = false,
   error,
   isMutating,
   showKycActions = true,
   showAccountActions = true,
   showRequestMeta = true,
+  page,
+  pageSize,
+  totalPages,
+  totalElements,
+  selectedCustomerId,
+  selectedCustomerDetail,
+  selectedCustomerError,
+  isDetailLoading,
   onSearchChange,
   onRefresh,
+  onPageChange,
+  onPageSizeChange,
   onApproveKyc,
   onRejectKyc,
   onApproveAccount,
+  onOpenCustomer,
+  onCloseDetail,
   getPendingRequestForCustomer,
   isKycPending
 }) {
+  const [rowHeight, setRowHeight] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? 188 : 116
+  );
+
+  useEffect(() => {
+    function updateRowHeight() {
+      setRowHeight(window.innerWidth < 768 ? 188 : window.innerWidth < 1040 ? 142 : 116);
+    }
+
+    updateRowHeight();
+    window.addEventListener("resize", updateRowHeight);
+    return () => {
+      window.removeEventListener("resize", updateRowHeight);
+    };
+  }, []);
+
+  const listHeight = useMemo(() => {
+    if (!customers.length) {
+      return rowHeight * 4;
+    }
+    return Math.min(customers.length, 6) * rowHeight;
+  }, [customers.length, rowHeight]);
+
+  const itemData = useMemo(
+    () => ({
+      customers,
+      showKycActions,
+      showAccountActions,
+      showRequestMeta,
+      isMutating,
+      onApproveKyc,
+      onRejectKyc,
+      onApproveAccount,
+      onOpenCustomer,
+      getPendingRequestForCustomer,
+      isKycPending
+    }),
+    [
+      customers,
+      getPendingRequestForCustomer,
+      isKycPending,
+      isMutating,
+      onApproveAccount,
+      onApproveKyc,
+      onOpenCustomer,
+      onRejectKyc,
+      showAccountActions,
+      showKycActions,
+      showRequestMeta
+    ]
+  );
+
+  const selectedRequest = selectedCustomerDetail
+    ? getPendingRequestForCustomer(selectedCustomerDetail.userId)
+    : null;
+  const showInitialSkeleton = isLoading && !hasLoadedOnce && customers.length === 0 && !error;
+  const showEmptyState = !isLoading && !error && customers.length === 0;
+  const showList = !error && customers.length > 0;
+
   return (
-    <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
-      <div className="vault-admin-panel-toolbar">
-        <SubmitButton
-          type="button"
-          variant="secondary"
-          isLoading={isLoading}
-          idleLabel="Refresh registry"
-          loadingLabel="Refreshing..."
-          onClick={onRefresh}
-          disabled={isLoading || isMutating}
-        />
-      </div>
-
-      <div className="vault-admin-registry-toolbar min-w-0">
-        <FormField
-          label="Search customers"
-          name="search"
-          value={searchTerm}
-          onChange={(_, value) => onSearchChange(value)}
-          placeholder={searchPlaceholder}
-        />
-      </div>
-
-      {isLoading ? (
-        <LoadingState compact title="Loading customers" message="Fetching customer registry." />
-      ) : null}
-
-      {error ? (
-        <SectionErrorState
-          message={error}
-          action={
-            <button type="button" className="secondary" onClick={onRefresh}>
-              Retry
-            </button>
-          }
-        />
-      ) : null}
-
-      {!isLoading && !error && customers.length === 0 ? (
-        <EmptyState
-          title={emptyTitle}
-          message={emptyMessage}
-        />
-      ) : null}
-
-      {!isLoading && !error && customers.length > 0 ? (
-        <div className="vault-admin-table-shell w-full overflow-x-auto">
-          <table className="vault-admin-data-table vault-admin-customer-table w-full">
-            <colgroup>
-              <col className="vault-admin-col-user" />
-              <col className="vault-admin-col-contact" />
-              <col className="vault-admin-col-address" />
-              <col className="vault-admin-col-status" />
-              <col className="vault-admin-col-actions" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th scope="col">User Information</th>
-                <th scope="col">Contact &amp; DOB</th>
-                <th scope="col">Physical Address</th>
-                <th scope="col">KYC Status</th>
-                <th scope="col" className="is-actions">
-                  {actionColumnLabel}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((customer) => {
-                const relatedRequest = getPendingRequestForCustomer(customer.userId);
-                const kycPending = isKycPending(customer);
-
-                return (
-                  <tr key={customer.userId}>
-                    <td>
-                      <CustomerUserCell customer={customer} />
-                    </td>
-                    <td>
-                      <div className="vault-admin-cell-stack">
-                        <strong>{customer.phoneNumber || "No phone number"}</strong>
-                        <span>{formatDate(customer.dateOfBirth)}</span>
-                        <small>{customer.occupation || "No occupation listed"}</small>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="vault-admin-cell-stack">
-                        <strong>{formatAddress(customer) || "No address captured"}</strong>
-                        <span>{customer.gender || "Gender not provided"}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="vault-admin-cell-stack vault-admin-registry-status">
-                        <StatusBadge status={customer.kycStatus} />
-                        {showRequestMeta && relatedRequest ? (
-                          <div className="vault-admin-request-meta">
-                            <RequestStatusBadge status={relatedRequest.status} />
-                            <small>
-                              Request: {relatedRequest.accountType} for{" "}
-                              {formatCurrency(relatedRequest.openingBalance)}
-                            </small>
-                          </div>
-                        ) : showRequestMeta ? (
-                          <small>No pending account request</small>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="is-actions">
-                      <div className="vault-admin-table-actions-cell">
-                        {kycPending ? (
-                          showKycActions ? (
-                            <div className="vault-admin-action-group">
-                              <div className="vault-admin-action-buttons">
-                                <button
-                                  type="button"
-                                  className="vault-admin-action is-approve"
-                                  onClick={() => onApproveKyc(customer.userId)}
-                                  disabled={isMutating}
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  className="vault-admin-action is-reject"
-                                  onClick={() => onRejectKyc(customer.userId)}
-                                  disabled={isMutating}
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                              <KycActionState customer={customer} actionable />
-                            </div>
-                          ) : (
-                            <KycActionState customer={customer} actionable={false} />
-                          )
-                        ) : (
-                          <KycActionState customer={customer} actionable={false} />
-                        )}
-
-                        {showAccountActions && relatedRequest ? (
-                          <div className="vault-admin-account-request-card">
-                            <div>
-                              <strong>Account request pending</strong>
-                              <span>
-                                {relatedRequest.accountType} request for{" "}
-                                {formatCurrency(relatedRequest.openingBalance)}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="vault-admin-inline-button"
-                              onClick={() => onApproveAccount(relatedRequest.id)}
-                              disabled={isMutating}
-                            >
-                              Approve account
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <>
+      <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
+        <div className="vault-admin-panel-toolbar">
+          <SubmitButton
+            type="button"
+            variant="secondary"
+            isLoading={showInitialSkeleton}
+            idleLabel="Refresh registry"
+            loadingLabel="Refreshing..."
+            onClick={onRefresh}
+            disabled={isLoading || isMutating}
+          />
         </div>
+
+        <div className="vault-admin-panel-copy">
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+
+        <div className="vault-admin-registry-toolbar min-w-0">
+          <FormField
+            label="Search customers"
+            name="search"
+            value={searchDraft}
+            onChange={(_, value) => onSearchChange(value)}
+            placeholder={searchPlaceholder}
+          />
+
+          <FormField
+            label="Rows"
+            name="pageSize"
+            as="select"
+            value={String(pageSize)}
+            onChange={(_, value) => onPageSizeChange(value)}
+            options={PAGE_SIZE_OPTIONS}
+          />
+        </div>
+
+        <div className="vault-admin-virtual-meta">
+          <span>{totalElements.toLocaleString()} customers</span>
+          <span>{isLoading && hasLoadedOnce ? "Refreshing data..." : actionColumnLabel}</span>
+        </div>
+
+        {showInitialSkeleton ? <RegistrySkeletonRows /> : null}
+
+        {error ? (
+          <SectionErrorState
+            message={error}
+            action={
+              <button type="button" className="secondary" onClick={onRefresh}>
+                Retry
+              </button>
+            }
+          />
+        ) : null}
+
+        {showEmptyState ? (
+          <EmptyState title={emptyTitle} message={emptyMessage} />
+        ) : null}
+
+        {showList ? (
+          <>
+            <div className="vault-admin-virtual-shell">
+              <div className="vault-admin-virtual-header">
+                <span>User</span>
+                <span>Contact</span>
+                <span>Location</span>
+                <span>Status</span>
+                <span>{actionColumnLabel}</span>
+              </div>
+
+              <List
+                className="vault-admin-virtual-list"
+                height={listHeight}
+                itemCount={customers.length}
+                itemData={itemData}
+                itemSize={rowHeight}
+                overscanCount={4}
+                width="100%"
+              >
+                {CustomerRow}
+              </List>
+            </div>
+
+            <div className="vault-admin-pager">
+              <span>
+                Page {totalPages === 0 ? 0 : page + 1} of {Math.max(totalPages, 1)}
+              </span>
+              <div className="vault-admin-pager-actions">
+                <button
+                  type="button"
+                  className="vault-admin-icon-button"
+                  onClick={() => onPageChange(page - 1)}
+                  disabled={page <= 0 || (isLoading && !hasLoadedOnce)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="vault-admin-icon-button"
+                  onClick={() => onPageChange(page + 1)}
+                  disabled={
+                    totalPages === 0 || page >= totalPages - 1 || (isLoading && !hasLoadedOnce)
+                  }
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </Panel>
+
+      {selectedCustomerId ? (
+        <CustomerDetailDrawer
+          customer={selectedCustomerDetail}
+          relatedRequest={selectedRequest}
+          error={selectedCustomerError}
+          isLoading={isDetailLoading}
+          onClose={onCloseDetail}
+        />
       ) : null}
-    </Panel>
+    </>
   );
 });

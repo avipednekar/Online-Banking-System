@@ -233,6 +233,68 @@ class AdminIntegrationTest {
                 .andExpect(jsonPath("$.data[0].accountNumber").value(org.hamcrest.Matchers.matchesPattern("9\\d{9}")));
     }
 
+    @Test
+    void adminCustomerRegistrySupportsPaginationSearchAndDetail() throws Exception {
+        MvcResult registration = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "pagetest",
+                                  "email": "pagetest@example.com",
+                                  "password": "Password@123",
+                                  "fullName": "Page Test",
+                                  "phoneNumber": "9998887766",
+                                  "gender": "OTHER",
+                                  "occupation": "Operator",
+                                  "addressLine1": "55 Search Road",
+                                  "addressLine2": "Unit 8",
+                                  "city": "Pune",
+                                  "state": "Maharashtra",
+                                  "postalCode": "411001",
+                                  "country": "India",
+                                  "dateOfBirth": "1991-03-12"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long userId = objectMapper.readTree(registration.getResponse().getContentAsString())
+                .get("data")
+                .get("userId")
+                .asLong();
+
+        MvcResult adminLogin = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "admin",
+                                  "password": "Admin@123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String adminToken = objectMapper.readTree(adminLogin.getResponse().getContentAsString())
+                .get("data")
+                .get("token")
+                .asText();
+
+        mockMvc.perform(get("/api/admin/customers?page=0&size=20&search=pagetest")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.content[0].username").value("pagetest"))
+                .andExpect(jsonPath("$.data.content[0].city").value("Pune"));
+
+        mockMvc.perform(get("/api/admin/customers/{userId}", userId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.username").value("pagetest"))
+                .andExpect(jsonPath("$.data.addressLine1").value("55 Search Road"))
+                .andExpect(jsonPath("$.data.occupation").value("Operator"));
+    }
+
     private JsonNode extractCustomerCollection(JsonNode response) {
         JsonNode data = response.get("data");
         if (data != null && data.isArray()) {

@@ -45,9 +45,12 @@ function SummaryCard({ icon: Icon, label, value, detail, tone = "default", trend
 export const AdminOverviewPanel = memo(function AdminOverviewPanel({
   overview,
   isLoading,
+  hasLoadedOnce = false,
   error,
   onRefresh
 }) {
+  const showInitialLoading = isLoading && !hasLoadedOnce && !overview;
+
   return (
     <Panel className="vault-admin-panel vault-admin-overview-panel min-w-0 rounded-[24px] p-4 sm:p-4">
       <SectionHeader
@@ -56,7 +59,7 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
           <SubmitButton
             type="button"
             variant="secondary"
-            isLoading={isLoading}
+            isLoading={showInitialLoading}
             idleLabel="Refresh metrics"
             loadingLabel="Refreshing..."
             onClick={onRefresh}
@@ -65,7 +68,7 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
         }
       />
 
-      {isLoading ? (
+      {showInitialLoading ? (
         <LoadingState compact title="Loading overview" message="Fetching banking KPIs." />
       ) : null}
 
@@ -80,7 +83,7 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
         />
       ) : null}
 
-      {!isLoading && !error ? (
+      {!error && overview ? (
         <div className="vault-admin-kpi-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             icon={WalletCards}

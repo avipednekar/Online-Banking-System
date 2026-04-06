@@ -1,31 +1,30 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export function useAsyncTracker() {
   const [pendingActions, setPendingActions] = useState([]);
 
-  function startAction(action) {
+  const startAction = useCallback((action) => {
     setPendingActions((current) => (current.includes(action) ? current : [...current, action]));
-  }
+  }, []);
 
-  function finishAction(action) {
+  const finishAction = useCallback((action) => {
     setPendingActions((current) => current.filter((entry) => entry !== action));
-  }
+  }, []);
 
-  const state = useMemo(
-    () => ({
-      pendingActions,
-      isBusy: pendingActions.length > 0,
-      isPending(action) {
-        return pendingActions.includes(action);
-      },
-      primaryAction: pendingActions[0] || ""
-    }),
+  const isPending = useCallback(
+    (action) => pendingActions.includes(action),
     [pendingActions]
   );
 
-  return {
-    ...state,
-    startAction,
-    finishAction
-  };
+  return useMemo(
+    () => ({
+      pendingActions,
+      isBusy: pendingActions.length > 0,
+      isPending,
+      primaryAction: pendingActions[0] || "",
+      startAction,
+      finishAction
+    }),
+    [finishAction, isPending, pendingActions, startAction]
+  );
 }

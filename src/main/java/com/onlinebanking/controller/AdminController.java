@@ -1,6 +1,7 @@
 package com.onlinebanking.controller;
 
-import com.onlinebanking.dto.AdminCustomerResponse;
+import com.onlinebanking.dto.AdminCustomerDetailResponse;
+import com.onlinebanking.dto.AdminCustomerListItemResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.ApiResponse;
@@ -10,6 +11,7 @@ import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.service.AdminService;
 import com.onlinebanking.service.TransferService;
 import jakarta.validation.Valid;
+import com.onlinebanking.model.KycStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,12 +42,22 @@ public class AdminController {
     }
 
     @GetMapping("/customers")
-    public ResponseEntity<ApiResponse<PagedResponse<AdminCustomerResponse>>> getCustomers(
+    public ResponseEntity<ApiResponse<PagedResponse<AdminCustomerListItemResponse>>> getCustomers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) KycStatus kycStatus) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Customers fetched successfully",
-                adminService.getCustomersPaged(page, Math.min(size, 100))
+                adminService.getCustomersPaged(page, Math.min(size, 50), search, kycStatus)
+        ));
+    }
+
+    @GetMapping("/customers/{userId}")
+    public ResponseEntity<ApiResponse<AdminCustomerDetailResponse>> getCustomerDetail(@PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Customer detail fetched successfully",
+                adminService.getCustomerDetail(userId)
         ));
     }
 
@@ -58,9 +70,9 @@ public class AdminController {
     }
 
     @PatchMapping("/customers/{userId}/kyc")
-    public ResponseEntity<ApiResponse<AdminCustomerResponse>> updateKycStatus(Authentication authentication,
-                                                                             @PathVariable Long userId,
-                                                                             @Valid @RequestBody UpdateKycStatusRequest request) {
+    public ResponseEntity<ApiResponse<AdminCustomerDetailResponse>> updateKycStatus(Authentication authentication,
+                                                                                   @PathVariable Long userId,
+                                                                                   @Valid @RequestBody UpdateKycStatusRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
                 "KYC status updated successfully",
                 adminService.updateKycStatus(authentication.getName(), userId, request)

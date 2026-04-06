@@ -83,6 +83,7 @@ export default function DashboardPage() {
       <AdminOverviewPanel
         overview={workspace.overview}
         isLoading={overviewBusy}
+        hasLoadedOnce={workspace.overviewLoaded}
         error={workspace.overviewError}
         onRefresh={workspace.loadOverview}
       />

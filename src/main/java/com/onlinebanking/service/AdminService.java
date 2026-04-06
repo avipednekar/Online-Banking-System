@@ -9,7 +9,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.onlinebanking.dto.AccountOpeningRequestResponse;
-import com.onlinebanking.dto.AdminCustomerResponse;
+import com.onlinebanking.dto.AdminCustomerDetailResponse;
+import com.onlinebanking.dto.AdminCustomerListItemResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
@@ -25,6 +26,7 @@ import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
+import com.onlinebanking.util.NormalizationUtils;
 
 import jakarta.transaction.Transactional;
 
@@ -69,19 +71,34 @@ public class AdminService {
         );
     }
 
-    public List<AdminCustomerResponse> getCustomers() {
-        return customerProfileRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(this::toCustomerResponse)
-                .toList();
-    }
+    public PagedResponse<AdminCustomerListItemResponse> getCustomersPaged(int page,
+                                                                          int size,
+                                                                          String search,
+                                                                          KycStatus kycStatus) {
+        String normalizedQuery = search == null ? "" : search.trim();
+        boolean queryBlank = normalizedQuery.isBlank();
+        String emailHash = normalizedQuery.contains("@") ? NormalizationUtils.hashEmail(normalizedQuery) : null;
+        String phoneHash = normalizedQuery.replaceAll("[^0-9]", "").length() >= 10
+                ? NormalizationUtils.hashPhone(normalizedQuery)
+                : null;
 
-    public PagedResponse<AdminCustomerResponse> getCustomersPaged(int page, int size) {
         return PagedResponse.from(
-                customerProfileRepository.findAll(
+                customerProfileRepository.searchAdminCustomers(
+                        normalizedQuery,
+                        queryBlank,
+                        emailHash,
+                        phoneHash,
+                        kycStatus,
                         PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
                 ),
-                this::toCustomerResponse
+                this::toCustomerListItemResponse
         );
+    }
+
+    public AdminCustomerDetailResponse getCustomerDetail(Long userId) {
+        CustomerProfile profile = customerProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found"));
+        return toCustomerDetailResponse(profile);
     }
 
     public List<AccountOpeningRequestResponse> getPendingAccountRequests() {
@@ -91,7 +108,7 @@ public class AdminService {
     }
 
     @Transactional
-    public AdminCustomerResponse updateKycStatus(String adminUsername, Long userId, UpdateKycStatusRequest request) {
+    public AdminCustomerDetailResponse updateKycStatus(String adminUsername, Long userId, UpdateKycStatusRequest request) {
         BankUser user = bankUserRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
         CustomerProfile profile = customerProfileRepository.findByUserId(userId)
@@ -116,7 +133,7 @@ public class AdminService {
                 "KYC set to " + request.kycStatus() + " for customer " + user.getUsername()
         );
         log.info("Admin {} set KYC status {} for user {}", adminUsername, request.kycStatus(), user.getUsername());
-        return toCustomerResponse(savedProfile);
+        return toCustomerDetailResponse(savedProfile);
     }
 
     @Transactional
@@ -129,8 +146,22 @@ public class AdminService {
         return bankingService.approveAccountOpeningRequest(admin, accountOpeningRequest);
     }
 
-    private AdminCustomerResponse toCustomerResponse(CustomerProfile profile) {
-        return new AdminCustomerResponse(
+    private AdminCustomerListItemResponse toCustomerListItemResponse(CustomerProfile profile) {
+        return new AdminCustomerListItemResponse(
+                profile.getUser().getId(),
+                profile.getCustomerId(),
+                profile.getUser().getUsername(),
+                profile.getUser().getEmail(),
+                profile.getFullName(),
+                profile.getPhoneNumber(),
+                profile.getCity(),
+                profile.getState(),
+                profile.getKycStatus().name()
+        );
+    }
+
+    private AdminCustomerDetailResponse toCustomerDetailResponse(CustomerProfile profile) {
+        return new AdminCustomerDetailResponse(
                 profile.getUser().getId(),
                 profile.getCustomerId(),
                 profile.getUser().getUsername(),

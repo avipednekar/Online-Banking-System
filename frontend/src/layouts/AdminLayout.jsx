@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ChevronRight,
@@ -114,13 +114,13 @@ export default function AdminLayout() {
     };
   }, [drawerOpen]);
 
-  async function refreshWorkspace() {
+  const refreshWorkspace = useCallback(async () => {
     await Promise.all([
       workspace.loadOverview(),
-      workspace.loadCustomers(),
+      workspace.refreshCustomerList(),
       workspace.loadAccountRequests()
     ]);
-  }
+  }, [workspace.loadAccountRequests, workspace.loadOverview, workspace.refreshCustomerList]);
 
   return (
     <section className="vault-admin-dashboard vault-admin-layout min-h-screen px-3 py-3 md:px-4 md:py-4 lg:h-screen lg:overflow-hidden">

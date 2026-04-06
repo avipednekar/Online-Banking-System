@@ -26,7 +26,7 @@ export default function CustomerRegistryPage() {
         isMutating={actionBusy}
         showKycActions={false}
         showAccountActions={false}
-        showRequestMeta
+        showRequestMeta={false}
         page={workspace.customerPage}
         pageSize={workspace.customerPageSize}
         totalPages={workspace.customerTotalPages}

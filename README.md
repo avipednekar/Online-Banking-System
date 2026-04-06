@@ -189,19 +189,30 @@ Authorization: Bearer <token>
 }
 ```
 
-## Verification
+## Advanced Transfer Architecture
 
-Backend tests:
+- **Idempotency Execution**: Secure transfers via `POST /api/transfers` using client-supplied `Idempotency-Key` headers securely tracking against the unique `transfer_records` table to guarantee repeat networking faults never double bill an account.
+- **Pessimistic Ledger Locking**: High volume concurrency is protected via strict, alphabetized `findByAccountIdsForUpdate` pessimistic locks directly on isolated `AccountBalance` records.
+- **Optimistic Hot-Fix Bypassing**: To prevent generic `StaleObjectStateException` heaps under maximum multi-thread loads, the denormalized presentation `Account.balance` safely skips standard JPA `@Version` collisions via dedicated `@Modifying` queries.
 
+## Load Testing framework
+
+The backend's concurrency protections are verified via raw K6 javascript load tests available in the `load-tests` directory.
+Using `papaparse` to iterate mock users dynamically, you can simulate massive, perfectly parallel account requests and transfers. 
+
+To execute the test pipelines locally:
+
+1. Request bulk account openings asynchronously:
 ```bash
-mvn test
+k6 run .\load-tests\bulk-account-open.js
 ```
-
-Frontend production build:
-
+2. Fast-Forward Auto-Approval map generation:
 ```bash
-cd frontend
-npm run build
+node .\load-tests\generate-testing-data.js
+```
+3. Test 100% Concurrent Stress Transfers:
+```bash
+k6 run .\load-tests\simultaneous-transfers.js
 ```
 
 ## Security implemented
@@ -210,54 +221,27 @@ npm run build
 - JWT protects all non-auth endpoints
 - Frontend auth state is centralized in an auth context instead of scattered component state
 - Frontend API calls are centralized in `api.js`
-- Frontend defaults to same-origin `/api` instead of exposing a fixed backend host in bundled client code
 - Frontend session data now uses `sessionStorage` instead of `localStorage`
 - Account operations use the authenticated user instead of trusting a URL user ID
 - Transfers to other users require an approved beneficiary
+- Transfers enforce strict local-region geographical locks via Customer Profile constraints
 - Audit logs are written for registration, account creation, balance actions, and beneficiary creation
 - Ledger entries are written for posted balance movements
-- Global validation and exception handling return API-safe error responses
-- CORS is limited to the React dev origin by default
-- Admin-only endpoints are protected with role checks
+- Global validation and exception handling return API-safe error responses gracefully
 
-## Security note
+## Data normalization & Database optimization
 
-If a browser calls an API directly, some network path will always be visible in developer tools. To fully hide internal service topology, deploy the frontend behind a reverse proxy or backend-for-frontend and use same-origin routes such as `/api`. For stronger token security in production, move away from JavaScript-accessible storage to `HttpOnly`, `Secure`, `SameSite` cookies with backend session handling or refresh-token rotation.
-
-## Domain improvements
-
-- Customer profiles with KYC status
-- Customer profile addresses normalized into a separate `customer_addresses` relation to keep customer attributes in 3NF
-- Customer onboarding with name, address, gender, occupation, phone number, and date of birth
-- Account opening requests require verified KYC and admin approval before the account is created
-- Account status and currency code
-- Backend-generated account numbers with a standard pattern
-- Beneficiary registry per customer tied directly to approved internal account numbers
-- Transaction status, channel, and counterparty tracking
-- Ledger entries for debit and credit history
-- Audit logging for sensitive operations
-
-## Data normalization
-
-- `bank_users`, `customer_profiles`, `customer_addresses`, `accounts`, `transactions`, `beneficiaries`, `ledger_entries`, and `account_number_sequences` are modeled so non-key facts depend on the key for each relation.
-- `customer_addresses` and `account_number_sequences` are straightforward BCNF-style relations because their determinants are candidate keys.
-- Startup schema reconciliation backfills `customer_addresses` from legacy inline columns so existing deployments can migrate without manual data repair.
-
-## Database optimization
-
-The database layer has been specifically tuned for production scale:
+- `bank_users`, `customer_profiles`, `customer_addresses`, `accounts`, `transactions`, `beneficiaries`, `ledger_entries`, and `account_number_sequences` are modeled in BCNF.
 - **Server Tuning**: `postgresql.conf` configured for customized memory limits (`shared_buffers`, `effective_cache_size`, `work_mem`) and SSD-aware query planner costs.
 - **Targeted Indexes**: Functional indexes (e.g. `LOWER(username)`) and join coverage added via Flyway migrations based on `EXPLAIN ANALYZE` results.
 - **Connection Pooling**: HikariCP configured with leak detection, prepared statement caching, and optimized lifetime maximums.
-- **Pagination**: All unbounded collections (Transaction history, Beneficiary list, Customer directories) are paginated natively through the database using Spring Data `Pageable` and returned with a standard `PagedResponse<T>`.
+- **Pagination**: All unbounded collections are paginated natively through the database using Spring Data `Pageable` and returned with a standard `PagedResponse<T>`.
 - **JPA Batching**: Hibernate configured to batch DML operations (`order_inserts`, `order_updates`) for ledger and audit tables.
 
-## Additional security you should add next
+## Additional improvements to pursue
 
 - Refresh tokens with rotation and token revocation
 - Email verification and password reset flows
 - Rate limiting on login and transfer endpoints
 - HTTPS only in deployment
-- Strong secret management with environment or vault tooling
-- Audit logging for login, transfer, and failed auth events
 - Optional 2FA for high-risk actions

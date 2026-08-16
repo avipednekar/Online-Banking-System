@@ -11,8 +11,9 @@ import {
   Users,
   X
 } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAdminWorkspace } from "../hooks/useAdminWorkspace";
+
 
 const NAV_ITEMS = [
   {
@@ -150,15 +151,15 @@ export default function AdminLayout() {
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="flex items-center justify-between px-2 pt-1 pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-base shadow-sm">
+            <Link to="/" className="flex items-center gap-3 hover:opacity-85 transition group" title="Return to Home Page">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-base shadow-sm group-hover:scale-105 transition-transform">
                 OB
               </div>
               <div>
-                <h1 className="font-bold text-slate-900 text-sm tracking-tight leading-tight">Online Banking</h1>
+                <h1 className="font-bold text-slate-900 text-sm tracking-tight leading-tight group-hover:text-indigo-700 transition">Online Banking</h1>
                 <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">Admin Console</p>
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
@@ -168,6 +169,7 @@ export default function AdminLayout() {
               <X size={16} />
             </button>
           </div>
+
 
           {/* Navigation Links */}
           <nav className="space-y-1" aria-label="Admin navigation">
@@ -244,10 +246,13 @@ export default function AdminLayout() {
         <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 py-3.5 bg-white border-b border-slate-200 w-full shadow-xs">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-0.5">
+              <Link to="/" className="hover:text-indigo-600 transition">Home</Link>
+              <ChevronRight size={12} />
               <span>Admin Console</span>
               <ChevronRight size={12} />
               <span className="text-indigo-600 font-semibold">{pageMeta.title}</span>
             </div>
+
             <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
               {pageMeta.title}
             </h2>

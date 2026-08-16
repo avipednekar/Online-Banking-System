@@ -1,110 +1,153 @@
 import {
   ArrowRight,
-  Building2,
-  ChartNoAxesCombined,
-  Send,
-  ShieldCheck
+  CheckCircle2,
+  Cpu,
+  Database,
+  Fingerprint,
+  Lock,
+  RefreshCw,
+  Scale,
+  ShieldAlert,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
-import { landingFeatureCards } from "../../constants/landingContent";
+import { RouteLink } from "../common/RouteLink";
 
-const featureIcons = {
-  "secure-assets": ShieldCheck,
-  "quick-transfers": Send,
-  "smart-analytics": ChartNoAxesCombined,
-  "institutional-integrity": Building2
-};
-
-function FeatureCard({ feature }) {
-  const Icon = featureIcons[feature.id];
-
-  if (feature.variant === "wide") {
-    return (
-      <div className="flex flex-col justify-between rounded-[24px] bg-white p-10 shadow-[0_24px_42px_-32px_rgba(25,28,30,0.18)] transition-transform hover:-translate-y-1 md:col-span-2">
-        <div>
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-[#002f1e]">
-            <Icon className="h-7 w-7 text-[#6ffbbe]" />
-          </div>
-          <h3 className="text-2xl font-bold text-[#00113a]">{feature.title}</h3>
-          <p className="mt-4 max-w-md leading-7 text-[#444650]">{feature.description}</p>
-        </div>
-        <div className="mt-8 flex flex-wrap gap-2">
-          {feature.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-[#eceef0] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[#444650]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
+const CORE_FEATURES = [
+  {
+    icon: Lock,
+    title: "Deterministic Pessimistic Locking",
+    badge: "Anti-Race Condition",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    description:
+      "All transfer transactions utilize deadlock-free, ordered pessimistic locking on sender and receiver accounts, guaranteeing zero double-spending or race condition vulnerabilities."
+  },
+  {
+    icon: ShieldAlert,
+    title: "High-Value Surveillance Gateway",
+    badge: "Risk Mitigation",
+    badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
+    description:
+      "Transfers equal to or exceeding ₹50,000 require administrative authorization, providing institutional risk management and preventing fraudulent capital outflows."
+  },
+  {
+    icon: Database,
+    title: "Transactional Outbox Pattern",
+    badge: "Zero Data Loss",
+    badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
+    description:
+      "Ledger events are atomically recorded alongside account balance mutations and continuously processed via background workers for 100% guaranteed delivery."
+  },
+  {
+    icon: Fingerprint,
+    title: "Instant KYC Clearance Desk",
+    badge: "Biometric & Digital",
+    badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    description:
+      "Full CIF-based customer identity verification workflows with dedicated reviewer actions, audit tracking, and real-time clearance status updates."
   }
-
-  if (feature.variant === "dark") {
-    return (
-      <div className="relative overflow-hidden rounded-[24px] bg-[#00113a] p-10 text-white">
-        <div className="relative z-10">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md">
-            <Icon className="h-7 w-7 text-white" />
-          </div>
-          <h3 className="text-2xl font-bold">{feature.title}</h3>
-          <p className="mt-4 leading-7 text-[#dbe1ff]">{feature.description}</p>
-        </div>
-        <div className="absolute -bottom-10 right-0 text-[12rem] font-black text-white/10">$</div>
-      </div>
-    );
-  }
-
-  if (feature.variant === "split") {
-    return (
-      <div className="flex flex-col gap-8 rounded-[24px] bg-white p-10 shadow-[0_24px_42px_-32px_rgba(25,28,30,0.18)] md:col-span-2 md:flex-row md:items-center">
-        <div className="flex-1">
-          <h3 className="text-2xl font-bold text-[#00113a]">{feature.title}</h3>
-          <p className="mt-4 leading-7 text-[#444650]">{feature.description}</p>
-          <button
-            type="button"
-            className="mt-6 inline-flex items-center gap-2 border-b-2 border-[#00113a]/20 bg-transparent p-0 pb-1 font-bold text-[#00113a] hover:translate-y-0 hover:border-[#00113a] hover:bg-transparent"
-          >
-            Learn about our compliance
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="h-48 flex-1 overflow-hidden rounded-xl bg-[#eceef0]">
-          <img src={feature.image} alt="Institutional strength" className="h-full w-full object-cover" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-[24px] bg-white p-10 shadow-[0_24px_42px_-32px_rgba(25,28,30,0.18)] transition-transform hover:-translate-y-1">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-[#d5e3fc]">
-        <Icon className="h-7 w-7 text-[#57657a]" />
-      </div>
-      <h3 className="text-2xl font-bold text-[#00113a]">{feature.title}</h3>
-      <p className="mt-4 leading-7 text-[#444650]">{feature.description}</p>
-    </div>
-  );
-}
+];
 
 export function LandingFeatures() {
   return (
-    <section id="features" className="bg-[#f2f4f6] py-24">
-      <div className="mx-auto max-w-screen-2xl px-6">
-        <div className="mb-16">
-          <h2 className="font-manrope text-4xl font-extrabold text-[#00113a]">
-            Engineered for Excellence
+    <section id="features" className="py-20 bg-white border-b border-slate-200">
+      <div className="mx-auto max-w-screen-2xl px-6 space-y-16">
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto space-y-3">
+          <span className="inline-block rounded-full bg-slate-100 text-slate-700 px-3.5 py-1 text-xs font-bold uppercase tracking-wider border border-slate-200">
+            Engineered For Excellence
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Institutional Banking Architecture
           </h2>
-          <p className="mt-4 max-w-2xl text-lg text-[#444650]">
-            We&apos;ve removed the friction from high-stakes finance without compromising on
-            institutional rigor.
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            Built from the ground up to guarantee ACID compliance, multi-tier compliance surveillance, and sub-millisecond execution speeds.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {landingFeatureCards.map((feature) => (
-            <FeatureCard key={feature.id} feature={feature} />
-          ))}
+
+        {/* 4 Core App Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {CORE_FEATURES.map((feat, idx) => {
+            const Icon = feat.icon;
+
+            return (
+              <div
+                key={idx}
+                className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-7 hover:bg-white hover:border-slate-300 hover:shadow-md transition-all space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-2xs">
+                    <Icon size={22} />
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${feat.badgeColor}`}>
+                    {feat.badge}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">{feat.title}</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">{feat.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Security & Regulatory Showcase with Real Picture */}
+        <div id="security" className="rounded-3xl border border-slate-200 bg-slate-900 text-white overflow-hidden shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 items-center">
+            {/* Left Column: Security Information */}
+            <div className="lg:col-span-6 p-8 sm:p-12 space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3.5 py-1 text-xs font-bold text-emerald-400">
+                <ShieldCheck size={14} />
+                <span>DICGC Regulatory Protection</span>
+              </div>
+
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
+                Your money is protected by multi-layered cryptographic vaults.
+              </h3>
+
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Eligible deposits in Vault Financial accounts are protected up to <strong>₹5,00,000</strong> per depositor under the Deposit Insurance and Credit Guarantee Corporation (DICGC) guidelines.
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3 text-xs text-slate-200">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>256-Bit Hardware-Encrypted Secure Sessions</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-200">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Full Audit Trail Logging for Every Transaction</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-200">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Separation of Customer &amp; Administrative Authorizations</span>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <RouteLink
+                  to="/register"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-md transition-all"
+                >
+                  <span>Open Insured Account</span>
+                  <ArrowRight size={14} />
+                </RouteLink>
+              </div>
+            </div>
+
+            {/* Right Column: Real Vault Security Picture */}
+            <div className="lg:col-span-6 h-full flex items-center justify-center p-4 sm:p-8">
+              <div className="overflow-hidden rounded-2xl border border-slate-700 shadow-2xl">
+                <img
+                  src="/assets/vault_security_shield.jpg"
+                  alt="Vault Financial High-Security Bank Vault and DICGC Insurance"
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

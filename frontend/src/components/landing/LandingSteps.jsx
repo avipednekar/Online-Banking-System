@@ -1,67 +1,80 @@
-import { landingImages, landingSteps } from "../../constants/landingContent";
+import { ArrowRight, CheckCircle2, ShieldCheck, UserCheck, Wallet } from "lucide-react";
 import { RouteLink } from "../common/RouteLink";
 
-function StepCard({ step }) {
-  return (
-    <div className="flex flex-col items-center">
-      <div
-        className={[
-          "mb-8 flex h-20 w-20 items-center justify-center rounded-full border-4 text-2xl font-black shadow-sm",
-          step.highlighted
-            ? "border-white bg-[linear-gradient(135deg,#00113a_0%,#758dd5_100%)] text-white shadow-[0_24px_42px_-28px_rgba(0,17,58,0.52)]"
-            : "border-[#e6e8ea] bg-white text-[#00113a]"
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {step.number}
-      </div>
-      <h4 className="text-xl font-bold text-[#00113a]">{step.title}</h4>
-      <p className="mt-3 max-w-xs text-[#444650]">{step.description}</p>
-    </div>
-  );
-}
+const STEPS = [
+  {
+    number: "01",
+    icon: UserCheck,
+    title: "1. Digital Registration",
+    description: "Create your account in under 2 minutes with basic personal and identity details."
+  },
+  {
+    number: "02",
+    icon: ShieldCheck,
+    title: "2. KYC Clearance",
+    description: "Our digital verification desk validates your CIF profile for instant clearance."
+  },
+  {
+    number: "03",
+    icon: Wallet,
+    title: "3. Deposit & Earn 7.5%",
+    description: "Fund your account and start earning daily compounding interest with full DICGC protection."
+  }
+];
 
 export function LandingSteps() {
   return (
-    <section id="how-it-works" className="bg-[#f7f9fb] py-24">
-      <div className="mx-auto max-w-screen-2xl px-6 text-center">
-        <h2 className="font-manrope text-4xl font-extrabold text-[#00113a]">
-          Your path to precision banking
-        </h2>
-
-        <div className="relative mt-16 grid grid-cols-1 gap-12 md:grid-cols-3">
-          {landingSteps.map((step) => (
-            <StepCard key={step.id} step={step} />
-          ))}
-          <div className="absolute left-[20%] right-[20%] top-10 hidden h-0.5 bg-[#e6e8ea] md:block" />
+    <section id="how-it-works" className="py-20 bg-slate-50 border-b border-slate-200">
+      <div className="mx-auto max-w-screen-2xl px-6 text-center space-y-16">
+        <div className="max-w-3xl mx-auto space-y-3">
+          <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 px-3.5 py-1 text-xs font-bold uppercase tracking-wider">
+            Simple 3-Step Onboarding
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Start banking in under 3 minutes
+          </h2>
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            Zero paperwork, zero branch visits. Enjoy a 100% paperless digital banking experience from the comfort of your home.
+          </p>
         </div>
 
-        <div className="mt-20 inline-block max-w-4xl rounded-[28px] bg-[rgba(213,227,252,0.3)] p-12 text-left shadow-[0_24px_42px_-32px_rgba(25,28,30,0.12)]">
-          <div className="flex flex-col items-center gap-10 md:flex-row">
-            <div className="h-32 w-32 flex-shrink-0 rotate-[-3deg] rounded-[20px] bg-white p-4 shadow-[0_28px_44px_-32px_rgba(25,28,30,0.24)]">
-              <img
-                src={landingImages.premiumCard}
-                alt="Vault premium card"
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div>
-              <h3 className="font-manrope text-2xl font-bold text-[#00113a]">
-                Ready for the Vault?
-              </h3>
-              <p className="mt-3 text-lg text-[#57657a]">
-                Join 50,000+ institutional and retail investors who trust Vault Financial with
-                their future.
-              </p>
-              <RouteLink
-                to="/register"
-                className="mt-6 inline-block rounded-lg bg-[#00113a] px-6 py-3 font-bold text-white hover:bg-[#2a4386]"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+          {STEPS.map((step, idx) => {
+            const Icon = step.icon;
+
+            return (
+              <div
+                key={idx}
+                className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col items-center text-center space-y-4 relative z-10"
               >
-                Start Your Onboarding
-              </RouteLink>
-            </div>
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 font-extrabold text-lg shadow-2xs">
+                  <Icon size={28} />
+                </div>
+                <span className="text-xs font-mono font-bold text-emerald-600 uppercase tracking-wider block">
+                  Step {step.number}
+                </span>
+                <h3 className="text-lg font-bold text-slate-900">{step.title}</h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{step.description}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* CTA Card */}
+        <div className="max-w-4xl mx-auto rounded-3xl border border-emerald-200 bg-emerald-600 text-white p-8 sm:p-12 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
+          <div className="space-y-2 max-w-lg">
+            <h3 className="text-2xl font-bold text-white tracking-tight">Ready to experience next-gen banking?</h3>
+            <p className="text-emerald-100 text-xs sm:text-sm leading-relaxed">
+              Join thousands of customers who enjoy higher yields, instant transfers, and institutional security.
+            </p>
           </div>
+          <RouteLink
+            to="/register"
+            className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-slate-900 font-bold text-xs shadow-md hover:bg-slate-50 transition-all"
+          >
+            <span>Open Free Account</span>
+            <ArrowRight size={14} />
+          </RouteLink>
         </div>
       </div>
     </section>

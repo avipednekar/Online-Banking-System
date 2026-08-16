@@ -1,249 +1,230 @@
 # Online Banking System
 
-Spring Boot banking API with PostgreSQL-ready persistence, JWT authentication, ledger-style transaction recording, beneficiary management, audit logging, and a React frontend.
+A full-stack, India-focused banking application. The project pairs a Spring Boot REST API with a React/Vite web client for customer banking and administration workflows.
 
-## Stack
+## What it does
 
-- Java 17
-- Spring Boot 3
-- Spring Security with JWT
-- Spring Data JPA (Hibernate with statement caching & batching)
-- PostgreSQL (Tuned for high concurrency)
-- HikariCP Connection Pool
-- Flyway Database Migrations
-- React + Vite
-- Ledger entries and audit logs
+- Customer registration, login, refresh-token rotation, and logout
+- JWT-protected customer and administrator workspaces
+- KYC review before an account can be opened
+- Savings and current accounts denominated in INR
+- Deposits, withdrawals, account statements, and paginated transaction history
+- Verified internal beneficiaries and idempotent transfers
+- Administrative approval for transfers of INR 50,000 or more
+- Double-sided posting records, transaction ledger entries, audit logs, and an outbox table
+- Customer registry, KYC management, and pending-transfer queue for administrators
 
-## Backend setup
+## Technology
 
-For local development, the backend now defaults to the `local` profile and can start without extra environment variables:
+| Area | Tools |
+| --- | --- |
+| Backend | Java 17, Spring Boot 3.5, Spring Web, Spring Security, Spring Data JPA |
+| Database | PostgreSQL, Flyway, HikariCP |
+| Authentication | JWT access tokens, HTTP-only refresh-token cookies, Argon2id password hashing with a server-side pepper |
+| Frontend | React 18, React Router, Vite, Tailwind CSS, Lucide |
+| Testing | JUnit 5, Spring Boot Test, MockMvc, H2 (test profile) |
 
-```bash
+## Project layout
+
+```text
+.
+|- src/main/java/com/onlinebanking/   # API, domain model, security, and services
+|- src/main/resources/
+|  |- db/migration/                   # Flyway database migrations
+|  |- application-local.properties    # Local PostgreSQL profile
+|  `- application-prod.properties     # Production profile
+|- src/test/                          # Backend integration tests
+|- frontend/                          # React/Vite application
+|- .env.example                       # Backend environment-variable template
+`- README.md
+```
+
+## Prerequisites
+
+- JDK 17+
+- Maven 3.9+ (or an IDE with Maven support)
+- Node.js 18+ and npm
+- PostgreSQL 14+ for local or production runs
+
+## Run locally
+
+### 1. Configure PostgreSQL and backend secrets
+
+Create a database named `online_banking`, then copy the backend template and supply strong development values:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Update `.env` with the database password and values for `JWT_SECRET`, `PASSWORD_PEPPER`, `ENCRYPTION_MASTER_KEY`, and `ADMIN_PASSWORD`. The local profile reads `DB_USERNAME` and `DB_PASSWORD` from this file; its database URL is `jdbc:postgresql://localhost:5432/online_banking`.
+
+`ENCRYPTION_MASTER_KEY` must be a Base64-encoded 32-byte key. For example, PowerShell can generate one with:
+
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+### 2. Start the backend
+
+The `local` profile is active by default. It runs Flyway migrations and creates the configured administrator if one does not already exist.
+
+```powershell
 mvn spring-boot:run
 ```
 
-If your shell or IDE previously set `SPRING_PROFILES_ACTIVE=prod`, either clear it or force the local profile explicitly:
+The API is available at `http://localhost:8080`.
+
+The default local administrator username is `admin`; its password is the `ADMIN_PASSWORD` configured in `.env`.
+
+### 3. Start the frontend
+
+The committed frontend environment template already uses the Vite proxy, so browser requests to `/api` are forwarded to the backend.
 
 ```powershell
-Remove-Item Env:SPRING_PROFILES_ACTIVE -ErrorAction SilentlyContinue
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-The local profile uses in-memory H2, local-only JWT/encryption secrets, and bootstraps an admin user:
-
-```text
-username: admin
-password: Admin@123
-```
-
-For production-style runs, activate the `prod` profile and set these environment variables first:
-
-```powershell
-$env:DB_URL="jdbc:postgresql://localhost:5432/online_banking"
-$env:DB_USERNAME="postgres"
-$env:DB_PASSWORD="your_password"
-$env:JWT_SECRET="use-at-least-32-characters-for-your-jwt-secret"
-$env:JWT_EXPIRATION_MS="900000"
-$env:JWT_REFRESH_EXPIRATION_MS="604800000"
-$env:PASSWORD_PEPPER="server-side-password-pepper"
-$env:ENCRYPTION_MASTER_KEY="<base64-encoded-32-byte-key>"
-$env:ALLOWED_ORIGINS="https://your-frontend.example.com"
-```
-
-Run the production-style backend from the project root:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=prod
-```
-
-Backend base URL:
-
-```text
-http://localhost:8080
-```
-
-## Frontend setup
-
-Create a frontend env file from [frontend/.env.example](D:\Online Banking System\frontend\.env.example):
-
-```powershell
-Copy-Item frontend\.env.example frontend\.env
-```
-
-The frontend now defaults to same-origin `/api` requests. In local development, Vite proxies `/api` to the backend target from `API_PROXY_TARGET`, so the browser does not need a hardcoded `http://localhost:8080` API host.
-
-Refresh sessions are now cookie-backed. Keep `VITE_API_BASE_URL=/api` unless you also explicitly allow a trusted API origin through `VITE_TRUSTED_API_ORIGINS` and the backend `ALLOWED_ORIGINS` setting.
-
-Run the frontend:
-
-```bash
-cd frontend
+Set-Location frontend
+Copy-Item .env.example .env
 npm install
 npm run dev
 ```
 
-Frontend base URL:
+Open `http://localhost:5173`.
 
-```text
-http://localhost:5173
+## Configuration
+
+### Backend profiles
+
+| Profile | Purpose | Database configuration |
+| --- | --- | --- |
+| `local` (default) | Development | Local PostgreSQL database; CORS permits `http://localhost:5173`; refresh cookie is not marked `Secure` |
+| `prod` | Deployment-like runtime | Requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, JWT/encryption secrets, and `ALLOWED_ORIGINS`; refresh cookie is `Secure` |
+| `test` | Automated integration tests | In-memory H2 in PostgreSQL compatibility mode |
+
+To use the production profile, set the required variables and run:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "prod"
+$env:DB_URL = "jdbc:postgresql://localhost:5432/online_banking"
+$env:DB_USERNAME = "postgres"
+$env:DB_PASSWORD = "replace-me"
+$env:JWT_SECRET = "at-least-32-characters-of-random-secret-material"
+$env:JWT_EXPIRATION_MS = "900000"
+$env:JWT_REFRESH_EXPIRATION_MS = "604800000"
+$env:PASSWORD_PEPPER = "replace-with-a-secret-pepper"
+$env:ENCRYPTION_MASTER_KEY = "base64-encoded-32-byte-key"
+$env:ALLOWED_ORIGINS = "https://your-frontend.example.com"
+mvn spring-boot:run
 ```
 
-## Frontend architecture
+Do not commit `.env` files or use the local bootstrap administrator credentials in a deployed environment.
 
-## Frontend architecture
+### Frontend environment variables
 
-- `frontend/src/services/api.js`: centralized API client and error parsing
-- `frontend/src/context/AuthContext.jsx`: session and authentication state
-- `frontend/src/components/auth`: onboarding and login UI
-- `frontend/src/components/customer`: customer banking dashboard
-- `frontend/src/components/admin`: admin KYC, registry, and transfer approval dashboard
-- `frontend/src/hooks/useNotifications.js`: notification state
-- `frontend/src/utils`: shared formatters
+| Variable | Default | Description |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | `/api` | API base path or a trusted absolute API URL |
+| `API_PROXY_TARGET` | `http://localhost:8080` | Vite development proxy destination |
+| `VITE_TRUSTED_API_ORIGINS` | empty | Comma-separated absolute API origins allowed by the client when not using same-origin requests |
 
-## Main API endpoints
+For a separate frontend and API origin, add the frontend origin to backend `ALLOWED_ORIGINS` and the API origin to `VITE_TRUSTED_API_ORIGINS`. Credentials are required for the refresh-token cookie.
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/accounts`
-- `GET /api/accounts`
-- `GET /api/accounts/{accountNumber}`
-- `POST /api/accounts/{accountNumber}/deposit`
-- `POST /api/accounts/{accountNumber}/withdraw`
-- `POST /api/transfers`
-- `GET /api/accounts/{accountNumber}/transactions`
-- `POST /api/beneficiaries`
-- `GET /api/beneficiaries`
-- `GET /api/admin/overview`
-- `GET /api/admin/customers`
-- `PATCH /api/admin/customers/{userId}/kyc`
-- `GET /api/admin/transfers/pending`
-- `PATCH /api/admin/transfers/{transferId}/approve`
+## Core workflow
 
-## Example API flow
+1. A customer registers; the account starts with `PENDING` KYC status.
+2. An administrator verifies KYC from the admin workspace or API.
+3. The customer opens a `SAVINGS` or `CURRENT` account with an opening balance of at least INR 100.
+4. The customer adds an active internal beneficiary, then creates a transfer with a unique `Idempotency-Key` header.
+5. Transfers below INR 50,000 post immediately. Transfers at or above that value remain `PENDING_APPROVAL` until an administrator approves them.
 
-Register:
+Only Indian customer profiles and INR accounts are supported. Transfers maintain a minimum source-account balance of INR 100.
 
-```json
-POST /api/auth/register
-{
-  "fullName": "Alice Johnson",
-  "username": "alice",
-  "email": "alice@example.com",
-  "password": "Password@123",
-  "phoneNumber": "9876543210",
-  "gender": "FEMALE",
-  "occupation": "Software Engineer",
-  "addressLine1": "12 Park Street",
-  "addressLine2": "Flat 5B",
-  "city": "Mumbai",
-  "state": "Maharashtra",
-  "postalCode": "400001",
-  "country": "India",
-  "dateOfBirth": "1997-08-10"
-}
-```
+## API overview
 
-Example auth response:
+All successful responses use this envelope:
 
 ```json
 {
-  "userId": 1,
-  "username": "alice",
-  "role": "USER",
-  "token": "jwt-token-here",
-  "expiresIn": 86400000,
-  "message": "User registered successfully"
+  "success": true,
+  "message": "...",
+  "data": {}
 }
 ```
 
-Open an account after KYC verification:
+Except for `/api/auth/**`, endpoints require an access token:
 
-```json
-POST /api/accounts
-Authorization: Bearer <token>
-{
-  "accountType": "SAVINGS",
-  "openingBalance": 1000.00
-}
+```http
+Authorization: Bearer <access-token>
 ```
 
-Transfer funds:
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Create a customer and start a session |
+| POST | `/api/auth/login` | Authenticate and start a session |
+| POST | `/api/auth/refresh` | Rotate the refresh token and issue a new access token |
+| POST | `/api/auth/logout` | Revoke the current refresh session |
+| GET | `/api/auth/me` | Retrieve the current user profile |
+| POST / GET | `/api/accounts` | Open an account / list the customer's accounts |
+| GET | `/api/accounts/{accountNumber}` | Retrieve an owned account |
+| POST | `/api/accounts/{accountNumber}/deposit` | Deposit funds |
+| POST | `/api/accounts/{accountNumber}/withdraw` | Withdraw funds |
+| GET | `/api/accounts/{accountNumber}/transactions?page=0&size=20` | Retrieve a paginated statement (`size` maximum: 100) |
+| POST / GET | `/api/beneficiaries` | Create / list beneficiaries |
+| GET | `/api/beneficiaries/lookup/{accountNumber}` | Verify an internal beneficiary account |
+| POST | `/api/transfers` | Create an idempotent beneficiary transfer |
+| GET | `/api/admin/overview` | View administrator metrics |
+| GET | `/api/admin/customers` | List customers with optional `page`, `size`, `search`, and `kycStatus` filters |
+| GET | `/api/admin/customers/{userId}` | View a customer record |
+| PATCH | `/api/admin/customers/{userId}/kyc` | Update customer KYC status |
+| GET | `/api/admin/transfers/pending` | List transfers awaiting approval |
+| PATCH | `/api/admin/transfers/{transferId}/approve` | Post a pending transfer |
 
-```json
+### Example: create a transfer
+
+```http
 POST /api/transfers
-Authorization: Bearer <token>
-Idempotency-Key: idem-123456789
+Authorization: Bearer <access-token>
+Idempotency-Key: 3a2ed88d-3ed6-45c3-a22e-0c53ac44cf85
+Content-Type: application/json
+
 {
-  "fromAccountId": "ACC-9123400001",
-  "beneficiaryId": "BEN-8456700001",
+  "fromAccountId": "ACC-...",
+  "beneficiaryId": "BEN-...",
   "amount": 250.00,
   "currency": "INR",
-  "remarks": "Payment for services",
+  "remarks": "Invoice payment",
   "channel": "ONLINE_BANKING"
 }
 ```
 
-Transfers of ₹50,000 or greater require administrative authorization. Approve high-value transfers as admin:
+Use a new idempotency key for a new intended transfer. Retrying the same request with the same key returns the existing transfer instead of charging the account twice.
 
-```text
-PATCH /api/admin/transfers/{transferId}/approve
+## Security and data handling
+
+- Access tokens are signed JWTs; refresh tokens are stored server-side as hashes and sent in HTTP-only cookies.
+- Refreshing a session rotates its refresh token and invalidates the previous access token.
+- Passwords use a peppered Argon2id encoder. Sensitive profile fields are encrypted at rest through a JPA converter, with lookup hashes where needed.
+- Five failed login attempts temporarily lock the account (the default lock period is 15 minutes).
+- Role-based access control limits `/api/admin/**` to administrators.
+- Transfer posting uses ordered pessimistic balance locks and an idempotency key. Each posted transfer creates debit and credit transaction, ledger, and posting records.
+- Flyway manages schema changes; JPA validates rather than generates the schema at runtime.
+
+## Test and build
+
+Run the backend integration suite:
+
+```powershell
+mvn test
 ```
 
+Build the frontend production bundle:
 
-## Advanced Transfer Architecture
-
-- **Idempotency Execution**: Secure transfers via `POST /api/transfers` using client-supplied `Idempotency-Key` headers securely tracking against the unique `transfer_records` table to guarantee repeat networking faults never double bill an account.
-- **Pessimistic Ledger Locking**: High volume concurrency is protected via strict, alphabetized `findByAccountIdsForUpdate` pessimistic locks directly on isolated `AccountBalance` records.
-- **Optimistic Hot-Fix Bypassing**: To prevent generic `StaleObjectStateException` heaps under maximum multi-thread loads, the denormalized presentation `Account.balance` safely skips standard JPA `@Version` collisions via dedicated `@Modifying` queries.
-
-## Load Testing framework
-
-The backend's concurrency protections are verified via raw K6 javascript load tests available in the `load-tests` directory.
-Using `papaparse` to iterate mock users dynamically, you can simulate massive, perfectly parallel account requests and transfers. 
-
-To execute the test pipelines locally:
-
-1. Request bulk account openings asynchronously:
-```bash
-k6 run .\load-tests\bulk-account-open.js
-```
-2. Fast-Forward Auto-Approval map generation:
-```bash
-node .\load-tests\generate-testing-data.js
-```
-3. Test 100% Concurrent Stress Transfers:
-```bash
-k6 run .\load-tests\simultaneous-transfers.js
+```powershell
+Set-Location frontend
+npm run build
 ```
 
-## Security implemented
+The frontend currently provides no separate test script. The backend test profile runs against H2 and covers authentication/session security, banking operations, transfers, and administrator workflows.
 
-- Passwords are hashed with BCrypt
-- JWT protects all non-auth endpoints
-- Frontend auth state is centralized in an auth context instead of scattered component state
-- Frontend API calls are centralized in `api.js`
-- Frontend session data now uses `sessionStorage` instead of `localStorage`
-- Account operations use the authenticated user instead of trusting a URL user ID
-- Transfers to other users require an approved beneficiary
-- Transfers enforce strict local-region geographical locks via Customer Profile constraints
-- Audit logs are written for registration, account creation, balance actions, and beneficiary creation
-- Ledger entries are written for posted balance movements
-- Global validation and exception handling return API-safe error responses gracefully
+## Important notes
 
-## Data normalization & Database optimization
-
-- `bank_users`, `customer_profiles`, `customer_addresses`, `accounts`, `transactions`, `beneficiaries`, `ledger_entries`, and `account_number_sequences` are modeled in BCNF.
-- **Server Tuning**: `postgresql.conf` configured for customized memory limits (`shared_buffers`, `effective_cache_size`, `work_mem`) and SSD-aware query planner costs.
-- **Targeted Indexes**: Functional indexes (e.g. `LOWER(username)`) and join coverage added via Flyway migrations based on `EXPLAIN ANALYZE` results.
-- **Connection Pooling**: HikariCP configured with leak detection, prepared statement caching, and optimized lifetime maximums.
-- **Pagination**: All unbounded collections are paginated natively through the database using Spring Data `Pageable` and returned with a standard `PagedResponse<T>`.
-- **JPA Batching**: Hibernate configured to batch DML operations (`order_inserts`, `order_updates`) for ledger and audit tables.
-
-## Additional improvements to pursue
-
-- Refresh tokens with rotation and token revocation
-- Email verification and password reset flows
-- Rate limiting on login and transfer endpoints
-- HTTPS only in deployment
-- Optional 2FA for high-risk actions
+- This application is an educational/project implementation, not a substitute for a regulated banking platform.
+- Deploy behind HTTPS and provide production-grade secret management, monitoring, rate limiting, backup/restore procedures, and a security review before handling real financial data.

@@ -8,39 +8,22 @@
 
 .vault-admin-dashboard,
 .vault-admin-layout {
-  display: grid;
-  grid-template-columns: minmax(250px, 280px) minmax(0, 1fr);
-  gap: 1rem;
   min-height: 100vh;
-  height: 100vh;
-  align-items: stretch;
-  overflow: hidden;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
+
+/* Admin layout resets */
 .vault-admin-sidebar,
 .vault-admin-kpi-card,
 .vault-admin-registry,
+.vault-admin-panel,
 .vault-admin-system-card {
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 32px 32px -4px rgba(25, 28, 30, 0.06);
+  background: transparent;
+  box-shadow: none;
 }
 
-.vault-admin-sidebar {
-  position: sticky;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  align-self: stretch;
-  width: 100%;
-  min-width: 250px;
-  min-height: 0;
-  height: 100%;
-  padding: 1rem 0.9rem;
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(242, 244, 246, 0.98) 0%, rgba(247, 249, 251, 0.95) 100%);
-}
 
 .vault-admin-sidebar-head {
   display: flex;
@@ -869,8 +852,9 @@
 
 @media (max-width: 1240px) {
   .vault-admin-dashboard {
-    grid-template-columns: 1fr;
+    width: 100%;
   }
+
 
   .vault-admin-sidebar {
     position: static;
@@ -986,12 +970,10 @@
 }
 
 .vault-admin-panel {
-  gap: 0.85rem;
-  min-width: 0;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 32px 32px -4px rgba(25, 28, 30, 0.06);
+  background: transparent;
+  box-shadow: none;
 }
+
 
 .vault-admin-panel .panel-header {
   align-items: flex-start;
@@ -1292,10 +1274,9 @@
 @media (max-width: 1279px) {
   .vault-admin-dashboard,
   .vault-admin-layout {
-    grid-template-columns: minmax(230px, 250px) minmax(0, 1fr);
-    height: 100vh;
-    gap: 1rem;
+    min-height: 100vh;
   }
+
 
   .vault-admin-sidebar {
     position: sticky;

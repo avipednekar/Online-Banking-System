@@ -1,14 +1,28 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { FixedSizeList as List } from "react-window";
-import { ChevronLeft, ChevronRight, MapPin, Phone } from "lucide-react";
-import { formatAddress, formatCurrency, formatDate } from "../../utils/formatters";
+import { memo, useCallback, useMemo, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Mail,
+  MapPin,
+  Phone,
+  Search,
+  ShieldCheck,
+  User,
+  X
+} from "lucide-react";
+
+import { formatAddress, formatDate } from "../../utils/formatters";
 import { EmptyState } from "../feedback/EmptyState";
+import { LoadingState } from "../feedback/LoadingState";
 import { SectionErrorState } from "../feedback/SectionErrorState";
 import { FormField } from "../forms/FormField";
-import { Panel } from "../ui/Panel";
 import { StatusBadge } from "../ui/StatusBadge";
 
 const PAGE_SIZE_OPTIONS = [
+  { value: "10", label: "10 / page" },
   { value: "20", label: "20 / page" },
   { value: "25", label: "25 / page" },
   { value: "50", label: "50 / page" }
@@ -23,289 +37,213 @@ function getInitials(value) {
     .join("");
 }
 
-const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
+const CustomerDetailModal = memo(function CustomerDetailModal({
   customer,
   error,
   isLoading,
+  isMutating,
+  onApproveKyc,
+  onRejectKyc,
   onClose
 }) {
-  if (!customer && !isLoading && !error) {
-    return null;
-  }
-
   return (
-    <div className="vault-admin-detail-overlay" role="presentation" onClick={onClose}>
-      <aside
-        className="vault-admin-detail-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Customer detail"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="vault-admin-detail-head">
-          <div>
-            <p className="vault-admin-detail-eyebrow">Customer detail</p>
-            <h3>{customer?.fullName || "Loading customer"}</h3>
-            <span>@{customer?.username || "customer"}</span>
-          </div>
-          <button type="button" className="vault-admin-inline-button" onClick={onClose}>
-            Close
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      {/* Transparent Click-Outside Backdrop */}
+      <button
+        type="button"
+        className="fixed inset-0 bg-transparent"
+        aria-label="Close detail view"
+        onClick={onClose}
+      />
 
-        {isLoading ? (
-          <div className="vault-admin-detail-loading">
-            <span className="inline-spinner" aria-hidden="true" />
-            <p>Loading customer profile...</p>
-          </div>
-        ) : null}
 
-        {error ? <SectionErrorState message={error} /> : null}
 
-        {customer && !isLoading && !error ? (
-          <div className="vault-admin-detail-body">
-            <div className="vault-admin-detail-grid">
-              <div>
-                <span>Email</span>
-                <strong>{customer.email}</strong>
-              </div>
-              <div>
-                <span>Phone</span>
-                <strong>{customer.phoneNumber || "Not available"}</strong>
-              </div>
-              <div>
-                <span>DOB</span>
-                <strong>{formatDate(customer.dateOfBirth)}</strong>
-              </div>
-              <div>
-                <span>Occupation</span>
-                <strong>{customer.occupation || "Not available"}</strong>
-              </div>
-              <div>
-                <span>Gender</span>
-                <strong>{customer.gender || "Not available"}</strong>
-              </div>
-              <div>
-                <span>KYC</span>
-                <strong>{customer.kycStatus}</strong>
-              </div>
+      {/* Centered Modal Card */}
+      <div className="relative z-10 w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col max-h-[90vh] text-slate-900 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 font-bold text-sm border border-indigo-200/60">
+              {getInitials(customer?.fullName || customer?.username)}
             </div>
-
-            <div className="vault-admin-detail-section">
-              <span>Registered address</span>
-              <p>{formatAddress(customer) || "No address captured"}</p>
-            </div>
-
-            <div className="vault-admin-detail-section">
-              <span>Identifiers</span>
-              <p>Customer ID: {customer.customerId}</p>
-              <p>Username: @{customer.username}</p>
+            <div>
+              <h3 className="font-bold text-base text-slate-900 leading-tight">
+                {customer?.fullName || customer?.username || "Customer Profile"}
+              </h3>
+              <p className="text-xs text-slate-500 font-mono mt-0.5">
+                CIF: <span className="text-indigo-600 font-semibold">{customer?.customerId || customer?.userId || "N/A"}</span>
+              </p>
             </div>
           </div>
-        ) : null}
-      </aside>
-    </div>
-  );
-});
-
-const RegistrySkeletonRows = memo(function RegistrySkeletonRows({
-  count = 6,
-  isKycQueueLayout = false
-}) {
-  return (
-    <div
-      className={
-        isKycQueueLayout ? "vault-admin-virtual-shell is-kyc" : "vault-admin-virtual-shell is-summary"
-      }
-    >
-      <div
-        className={
-          isKycQueueLayout ? "vault-admin-virtual-header is-kyc" : "vault-admin-virtual-header is-summary"
-        }
-      >
-        <span>Name</span>
-        <span>Email</span>
-        <span>Phone</span>
-        <span>Location</span>
-        <span>Status</span>
-        {isKycQueueLayout ? <span>Actions</span> : null}
-      </div>
-      <div className={isKycQueueLayout ? "vault-admin-grid-list is-skeleton" : "vault-admin-skeleton-list"}>
-        {Array.from({ length: count }).map((_, index) => (
-          <div
-            key={index}
-            className={isKycQueueLayout ? "vault-admin-grid-row is-skeleton" : "vault-admin-skeleton-row"}
-          >
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            {isKycQueueLayout ? <span /> : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-function SummaryCells({ customer }) {
-  const addressSummary = [customer.city, customer.state].filter(Boolean).join(", ");
-
-  return (
-    <>
-      <div className="vault-admin-virtual-user">
-        <div className="vault-admin-registry-avatar">
-          {getInitials(customer.fullName || customer.username)}
-        </div>
-        <div className="vault-admin-registry-copy">
-          <strong title={customer.fullName}>{customer.fullName}</strong>
-        </div>
-      </div>
-
-      <div className="vault-admin-virtual-cell">
-        <strong title={customer.email}>{customer.email}</strong>
-      </div>
-
-      <div className="vault-admin-virtual-cell">
-        <strong title={customer.phoneNumber || "No phone number"}>
-          <Phone size={14} />
-          {customer.phoneNumber || "No phone"}
-        </strong>
-      </div>
-
-      <div className="vault-admin-virtual-cell">
-        <strong title={addressSummary || "No location captured"}>
-          <MapPin size={14} />
-          {addressSummary || "No location"}
-        </strong>
-      </div>
-    </>
-  );
-}
-
-const KycGridRow = memo(function KycGridRow({ customer, data }) {
-  const handleOpenDetail = useCallback(async () => {
-    await data.onOpenCustomer(customer.userId);
-  }, [customer.userId, data]);
-
-  const handleApproveKyc = useCallback(
-    (event) => {
-      event.stopPropagation();
-      data.onApproveKyc(customer.userId);
-    },
-    [customer.userId, data]
-  );
-
-  const handleRejectKyc = useCallback(
-    (event) => {
-      event.stopPropagation();
-      data.onRejectKyc(customer.userId);
-    },
-    [customer.userId, data]
-  );
-
-  return (
-    <article
-      className="vault-admin-grid-row"
-      role="button"
-      tabIndex={0}
-      onClick={() => {
-        void handleOpenDetail();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          void handleOpenDetail();
-        }
-      }}
-    >
-      <SummaryCells customer={customer} />
-
-      <div className="vault-admin-virtual-cell">
-        <StatusBadge status={customer.kycStatus} />
-      </div>
-
-      <div className="vault-admin-grid-actions">
-        <div className="vault-admin-grid-action-buttons">
           <button
             type="button"
-            className="vault-admin-action is-approve"
-            onClick={handleApproveKyc}
-            disabled={data.isMutating}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            onClick={onClose}
+            aria-label="Close dialog"
           >
-            Approve
+            <X size={18} />
           </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+          {isLoading ? (
+            <div className="py-12">
+              <LoadingState compact title="Loading Profile" message="Fetching complete customer record from database." />
+            </div>
+          ) : null}
+
+          {error ? (
+            <SectionErrorState message={error} />
+          ) : null}
+
+          {!isLoading && !error && customer ? (
+            <div className="space-y-5 text-sm">
+              {/* KYC Status & Quick Action Banner */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Identity Clearance</span>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={customer.kycStatus} />
+                    {customer.kycStatus === "PENDING" ? (
+                      <span className="text-xs font-semibold text-amber-700">Verification Pending</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {customer.kycStatus === "PENDING" ? (
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition disabled:opacity-50"
+                      onClick={() => onApproveKyc(customer.userId)}
+                      disabled={isMutating}
+                    >
+                      <Check size={14} />
+                      <span>Approve KYC</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-300 transition disabled:opacity-50"
+                      onClick={() => onRejectKyc(customer.userId)}
+                      disabled={isMutating}
+                    >
+                      <X size={14} />
+                      <span>Reject</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* 2-Column Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Personal & Identity Details */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Identity Details</h4>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-xs shadow-2xs">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Full Name</span>
+                      <strong className="text-slate-900 font-semibold">{customer.fullName}</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Date of Birth</span>
+                      <span className="text-slate-800">{customer.dob || "Not Provided"}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Occupation</span>
+                      <span className="text-slate-800">{customer.occupation || "Not Provided"}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Annual Income</span>
+                      <span className="text-slate-800">{customer.annualIncome ? `₹${Number(customer.annualIncome).toLocaleString()}` : "Not Provided"}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500">Registered On</span>
+                      <span className="text-slate-800">{formatDate(customer.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact & Communications */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact &amp; Location</h4>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 text-xs shadow-2xs">
+                    <div className="flex items-center gap-2.5 text-slate-700 py-1 border-b border-slate-100">
+                      <Mail size={14} className="text-slate-400 shrink-0" />
+                      <span className="font-mono truncate">{customer.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-slate-700 py-1 border-b border-slate-100">
+                      <Phone size={14} className="text-slate-400 shrink-0" />
+                      <span className="font-mono">{customer.phone}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-slate-700 py-1">
+                      <MapPin size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{formatAddress(customer.address)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Identifiers */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">System Identifiers</h4>
+                <div className="rounded-xl border border-slate-200 bg-white p-3.5 text-xs grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-slate-700 shadow-2xs">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">User ID</span>
+                    <strong className="text-indigo-600 font-semibold">{customer.userId}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Customer ID</span>
+                    <strong className="text-indigo-600 font-semibold truncate block">{customer.customerId || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Username</span>
+                    <strong className="text-indigo-600 font-semibold">@{customer.username}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-6 py-3.5 border-t border-slate-200 bg-white flex justify-end">
           <button
             type="button"
-            className="vault-admin-action is-reject"
-            onClick={handleRejectKyc}
-            disabled={data.isMutating}
+            className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+            onClick={onClose}
           >
-            Reject
+            Close Profile
           </button>
         </div>
       </div>
-    </article>
-  );
-});
-
-const VirtualCustomerRow = memo(function VirtualCustomerRow({ index, style, data }) {
-  const customer = data.customers[index];
-
-  const handleOpenDetail = useCallback(async () => {
-    await data.onOpenCustomer(customer.userId);
-  }, [customer.userId, data]);
-
-  return (
-    <div style={style} className="vault-admin-virtual-row-wrap">
-      <article
-        className="vault-admin-virtual-row is-summary"
-        role="button"
-        tabIndex={0}
-        onClick={() => {
-          void handleOpenDetail();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            void handleOpenDetail();
-          }
-        }}
-      >
-        <SummaryCells customer={customer} />
-        <div className="vault-admin-virtual-cell">
-          <StatusBadge status={customer.kycStatus} />
-        </div>
-      </article>
     </div>
   );
 });
 
 export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
-  title = "Customer Registry",
-  subtitle = "Manage institution-wide identity verification and account onboarding actions.",
+  title = "Customer Directory",
+  subtitle = "Manage institution-wide identity verification and customer profiles.",
   emptyTitle = "No customer profiles found",
-  emptyMessage = "Newly registered customers will appear here for KYC review.",
-  searchPlaceholder = "Search by username, customer ID, email, phone, or KYC status",
-  actionColumnLabel = "Administrative Action",
-  customers,
-  searchDraft,
-  isLoading,
+  emptyMessage = "Newly registered customers will appear here.",
+  searchPlaceholder = "Search by username, customer ID, email, or phone...",
+  actionColumnLabel = "Actions",
+  customers = [],
+  searchDraft = "",
+  isLoading = false,
   hasLoadedOnce = false,
-  error,
-  isMutating,
-  showKycActions = true,
-  showAccountActions = true,
-  page,
-  pageSize,
-  totalPages,
-  totalElements,
+  error = "",
+  isMutating = false,
+  showKycActions = false,
+  page = 0,
+  pageSize = 20,
+  totalPages = 0,
+  totalElements = 0,
   showPanelCopy = true,
-  selectedCustomerId,
-  selectedCustomerDetail,
-  selectedCustomerError,
-  isDetailLoading,
+  selectedCustomerId = null,
+  selectedCustomerDetail = null,
+  selectedCustomerError = "",
+  isDetailLoading = false,
   onSearchChange,
   onRefresh,
   onPageChange,
@@ -315,95 +253,90 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   onOpenCustomer,
   onCloseDetail
 }) {
-  const [rowHeight, setRowHeight] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth < 768 ? 136 : 104
-  );
-  const isKycQueueLayout = showKycActions && !showAccountActions;
-
-  useEffect(() => {
-    if (isKycQueueLayout) {
-      return undefined;
-    }
-
-    function updateRowHeight() {
-      if (window.innerWidth < 768) {
-        setRowHeight(136);
-        return;
-      }
-
-      setRowHeight(104);
-    }
-
-    updateRowHeight();
-    window.addEventListener("resize", updateRowHeight);
-    return () => {
-      window.removeEventListener("resize", updateRowHeight);
-    };
-  }, [isKycQueueLayout]);
-
-  const listHeight = useMemo(() => {
-    if (!customers.length) {
-      return rowHeight * 4;
-    }
-    return Math.min(customers.length, 6) * rowHeight;
-  }, [customers.length, rowHeight]);
-
-  const itemData = useMemo(
-    () => ({
-      customers,
-      isMutating,
-      onApproveKyc,
-      onRejectKyc,
-      onOpenCustomer
-    }),
-    [customers, isMutating, onApproveKyc, onOpenCustomer, onRejectKyc]
-  );
-
   const showInitialSkeleton = isLoading && !hasLoadedOnce && customers.length === 0 && !error;
   const showEmptyState = !isLoading && !error && customers.length === 0;
   const showList = !error && customers.length > 0;
 
   return (
-    <>
-      <Panel className="vault-admin-panel vault-admin-registry-panel min-w-0 w-full rounded-[24px] p-4">
+    <div className="w-full space-y-4 min-w-0 bg-white">
+      <div className="w-full min-w-0 bg-white">
         {showPanelCopy ? (
-          <div className="vault-admin-panel-copy">
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
+          <div className="mb-5 border-b border-slate-200 pb-4">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
           </div>
         ) : null}
 
-        <div className="vault-admin-registry-toolbar min-w-0">
-          <FormField
-            label="Search customers"
-            name="search"
-            value={searchDraft}
-            onChange={(_, value) => onSearchChange(value)}
-            placeholder={searchPlaceholder}
-          />
+        {/* Toolbar: Search & Page Controls */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between mb-4 min-w-0">
+          <div className="relative flex-1 min-w-0">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm rounded-lg border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+              placeholder={searchPlaceholder}
+              value={searchDraft}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {searchDraft ? (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                onClick={() => onSearchChange("")}
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
 
-          <FormField
-            label="Rows"
-            name="pageSize"
-            as="select"
-            value={String(pageSize)}
-            onChange={(_, value) => onPageSizeChange(value)}
-            options={PAGE_SIZE_OPTIONS}
-          />
+          <div className="flex items-center gap-2.5 shrink-0">
+            {onPageSizeChange ? (
+              <div className="relative">
+                <select
+                  className="appearance-none pl-3 pr-8 py-2 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs transition"
+                  value={String(pageSize)}
+                  onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                  aria-label="Number of entries per page"
+                >
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+              </div>
+            ) : null}
+
+
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition disabled:opacity-50"
+              onClick={onRefresh}
+              disabled={isLoading}
+            >
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
-        <div className="vault-admin-virtual-meta">
-          <span>{totalElements.toLocaleString()} customers</span>
-          <span>
-            {isLoading && hasLoadedOnce
-              ? "Refreshing data..."
-              : isKycQueueLayout
-                ? "KYC actions"
-                : "Status overview"}
-          </span>
+        {/* Total records status */}
+        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold mb-3">
+          <span>{totalElements ? `${totalElements.toLocaleString()} TOTAL RECORDS` : "CUSTOMER DIRECTORY"}</span>
+          {totalPages > 1 ? (
+            <span>Page {page + 1} of {totalPages}</span>
+          ) : null}
         </div>
 
-        {showInitialSkeleton ? <RegistrySkeletonRows isKycQueueLayout={isKycQueueLayout} /> : null}
+        {/* Feedback states */}
+        {showInitialSkeleton ? (
+          <div className="py-12">
+            <LoadingState compact title="Loading customers" message="Fetching records from database." />
+          </div>
+        ) : null}
 
         {error ? (
           <SectionErrorState
@@ -416,91 +349,143 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
           />
         ) : null}
 
-        {showEmptyState ? <EmptyState title={emptyTitle} message={emptyMessage} /> : null}
-
-        {showList ? (
-          <>
-            {isKycQueueLayout ? (
-              <div className="vault-admin-virtual-shell is-kyc">
-                <div className="vault-admin-virtual-header is-kyc">
-                  <span>Name</span>
-                  <span>Email</span>
-                  <span>Phone</span>
-                  <span>Location</span>
-                  <span>Status</span>
-                  <span>{actionColumnLabel}</span>
-                </div>
-
-                <div className="vault-admin-grid-list">
-                  {customers.map((customer) => (
-                    <KycGridRow key={customer.userId} customer={customer} data={itemData} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="vault-admin-virtual-shell is-summary">
-                <div className="vault-admin-virtual-header is-summary">
-                  <span>Name</span>
-                  <span>Email</span>
-                  <span>Phone</span>
-                  <span>Location</span>
-                  <span>Status</span>
-                </div>
-
-                <List
-                  className="vault-admin-virtual-list"
-                  height={listHeight}
-                  itemCount={customers.length}
-                  itemData={itemData}
-                  itemSize={rowHeight}
-                  itemKey={(index, data) => data.customers[index]?.userId ?? index}
-                  overscanCount={4}
-                  width="100%"
-                >
-                  {VirtualCustomerRow}
-                </List>
-              </div>
-            )}
-
-            <div className="vault-admin-pager">
-              <span>
-                Page {totalPages === 0 ? 0 : page + 1} of {Math.max(totalPages, 1)}
-              </span>
-              <div className="vault-admin-pager-actions">
-                <button
-                  type="button"
-                  className="vault-admin-icon-button"
-                  onClick={() => onPageChange(page - 1)}
-                  disabled={page <= 0 || (isLoading && !hasLoadedOnce)}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="vault-admin-icon-button"
-                  onClick={() => onPageChange(page + 1)}
-                  disabled={
-                    totalPages === 0 || page >= totalPages - 1 || (isLoading && !hasLoadedOnce)
-                  }
-                  aria-label="Next page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          </>
+        {showEmptyState ? (
+          <EmptyState
+            icon={User}
+            title={emptyTitle}
+            message={emptyMessage}
+          />
         ) : null}
-      </Panel>
 
+        {/* High-Operability Full-Width Data Table */}
+        {showList ? (
+          <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full text-left text-xs border-collapse min-w-[760px]">
+              <thead>
+                <tr className="border-b border-slate-200 bg-white text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                  <th scope="col" className="py-3 px-4">Customer</th>
+                  <th scope="col" className="py-3 px-4">Email Address</th>
+                  <th scope="col" className="py-3 px-4">Phone</th>
+                  <th scope="col" className="py-3 px-4">Location</th>
+                  <th scope="col" className="py-3 px-4">KYC Status</th>
+                  <th scope="col" className="py-3 px-4 text-right">{actionColumnLabel}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
+                {customers.map((c) => (
+                  <tr key={c.userId} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-100">
+                          {getInitials(c.fullName || c.username)}
+                        </div>
+                        <div className="min-w-0">
+                          <strong className="block text-xs font-bold text-slate-900 truncate">
+                            {c.fullName || c.username}
+                          </strong>
+                          <span className="block text-[11px] text-slate-500 font-mono truncate">
+                            @{c.username}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-slate-600 truncate max-w-[180px]">
+                      {c.email}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-slate-600 whitespace-nowrap">
+                      {c.phone}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-600 truncate max-w-[150px]">
+                      {c.address?.city && c.address?.state
+                        ? `${c.address.city}, ${c.address.state}`
+                        : "Location not provided"}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <StatusBadge status={c.kycStatus} />
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        {showKycActions && c.kycStatus === "PENDING" ? (
+                          <>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition disabled:opacity-50"
+                              onClick={() => onApproveKyc(c.userId)}
+                              disabled={isMutating}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-300 transition disabled:opacity-50"
+                              onClick={() => onRejectKyc(c.userId)}
+                              disabled={isMutating}
+                            >
+                              <X size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition"
+                          onClick={() => onOpenCustomer(c.userId)}
+                        >
+                          <Eye size={13} />
+                          <span>View</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 ? (
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200 text-xs mt-4">
+            <span className="text-slate-500 font-medium">
+              Showing {(page * pageSize) + 1} to {Math.min((page + 1) * pageSize, totalElements)} of {totalElements}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page === 0 || isLoading}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages - 1 || isLoading}
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Customer Detail Centered Modal */}
       {selectedCustomerId ? (
-        <CustomerDetailDrawer
+        <CustomerDetailModal
           customer={selectedCustomerDetail}
           error={selectedCustomerError}
           isLoading={isDetailLoading}
+          isMutating={isMutating}
+          onApproveKyc={onApproveKyc}
+          onRejectKyc={onRejectKyc}
           onClose={onCloseDetail}
         />
       ) : null}
-    </>
+    </div>
   );
 });

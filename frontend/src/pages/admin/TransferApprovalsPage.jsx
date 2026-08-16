@@ -16,8 +16,9 @@ export default function TransferApprovalsPage() {
   }, [workspace.loadPendingTransfers]);
 
   return (
-    <section className="vault-admin-page min-w-0">
+    <section className="w-full min-w-0">
       <TransferApprovalQueuePanel
+
         transfers={workspace.pendingTransfers}
         isLoading={transfersBusy}
         error={workspace.pendingTransfersError}

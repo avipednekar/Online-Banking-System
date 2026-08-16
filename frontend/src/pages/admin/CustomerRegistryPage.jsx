@@ -13,11 +13,12 @@ export default function CustomerRegistryPage() {
   }, [workspace.closeCustomerDetail, workspace.setCustomerKycFilter]);
 
   return (
-    <section className="vault-admin-page min-w-0">
+    <section className="w-full min-w-0">
       <CustomerRegistryPanel
-        title="Customer Registry"
-        subtitle="Search the full customer base, inspect KYC state, and monitor onboarding signals."
-        actionColumnLabel="Review Status"
+
+        title="Institution Customer Directory"
+        subtitle="Search the bank-wide customer base, inspect individual KYC verification status, and view registered details."
+        actionColumnLabel="Profile"
         customers={workspace.customers}
         searchDraft={workspace.customerSearchDraft}
         isLoading={customersBusy}
@@ -25,8 +26,6 @@ export default function CustomerRegistryPage() {
         error={workspace.customersError}
         isMutating={actionBusy}
         showKycActions={false}
-        showAccountActions={false}
-        showRequestMeta={false}
         page={workspace.customerPage}
         pageSize={workspace.customerPageSize}
         totalPages={workspace.customerTotalPages}
@@ -38,11 +37,11 @@ export default function CustomerRegistryPage() {
         onSearchChange={workspace.setCustomerSearchDraft}
         onRefresh={workspace.refreshCustomerList}
         onPageChange={workspace.setCustomerPage}
+        onPageSizeChange={workspace.setCustomerPageSize}
         onApproveKyc={(userId) => workspace.updateKyc(userId, "VERIFIED")}
         onRejectKyc={(userId) => workspace.updateKyc(userId, "REJECTED")}
         onOpenCustomer={workspace.openCustomerDetail}
         onCloseDetail={workspace.closeCustomerDetail}
-        isKycPending={workspace.isKycPending}
       />
     </section>
   );

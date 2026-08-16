@@ -23,9 +23,7 @@ export const adminService = {
   getCustomerDetail(token, userId, { signal } = {}) {
     return apiRequest(`/admin/customers/${userId}`, { token, signal });
   },
-  getAccountRequests(token) {
-    return apiRequest("/admin/account-requests", { token });
-  },
+
   updateKyc(token, userId, kycStatus) {
     return apiRequest(`/admin/customers/${userId}/kyc`, {
       method: "PATCH",
@@ -33,12 +31,15 @@ export const adminService = {
       body: { kycStatus }
     });
   },
-  approveAccountRequest(token, requestId) {
-    return apiRequest(`/admin/account-requests/${requestId}/approve`, {
-      method: "PATCH",
-      token
+
+  getPendingTransfers(token, { page = 0, size = 25, signal } = {}) {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size)
     });
+    return apiRequest(`/admin/transfers/pending?${params.toString()}`, { token, signal });
   },
+
   approveTransfer(token, transferId) {
     return apiRequest(`/admin/transfers/${transferId}/approve`, {
       method: "PATCH",
@@ -46,3 +47,4 @@ export const adminService = {
     });
   }
 };
+

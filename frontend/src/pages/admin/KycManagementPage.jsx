@@ -42,13 +42,10 @@ export default function KycManagementPage() {
         onSearchChange={workspace.setCustomerSearchDraft}
         onRefresh={workspace.refreshCustomerList}
         onPageChange={workspace.setCustomerPage}
-        onPageSizeChange={workspace.setCustomerPageSize}
         onApproveKyc={(userId) => workspace.updateKyc(userId, "VERIFIED")}
         onRejectKyc={(userId) => workspace.updateKyc(userId, "REJECTED")}
-        onApproveAccount={workspace.approveAccountRequest}
         onOpenCustomer={workspace.openCustomerDetail}
         onCloseDetail={workspace.closeCustomerDetail}
-        getPendingRequestForCustomer={workspace.getPendingRequestForCustomer}
         isKycPending={workspace.isKycPending}
       />
     </section>

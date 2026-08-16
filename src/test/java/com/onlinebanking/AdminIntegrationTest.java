@@ -127,8 +127,8 @@ class AdminIntegrationTest {
     }
 
     @Test
-    void verifiedCustomerAccountRequestRequiresAdminApproval() throws Exception {
-        MvcResult registration = mockMvc.perform(post("/api/auth/register")
+    void adminCanReviewAndApproveHighValuePendingTransfers() throws Exception {
+        MvcResult senderReg = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -151,9 +151,34 @@ class AdminIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        JsonNode userResponse = objectMapper.readTree(registration.getResponse().getContentAsString());
-        Long userId = userResponse.get("data").get("userId").asLong();
-        String userToken = userResponse.get("data").get("token").asText();
+        Long senderId = objectMapper.readTree(senderReg.getResponse().getContentAsString()).get("data").get("userId").asLong();
+        String senderToken = objectMapper.readTree(senderReg.getResponse().getContentAsString()).get("data").get("token").asText();
+
+        MvcResult receiverReg = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "sohan",
+                                  "email": "sohan@example.com",
+                                  "password": "Password@123",
+                                  "fullName": "Sohan Patil",
+                                  "phoneNumber": "9998887772",
+                                  "gender": "MALE",
+                                  "occupation": "Trader",
+                                  "addressLine1": "45 Lake View",
+                                  "addressLine2": "Wing B",
+                                  "city": "Pune",
+                                  "state": "Maharashtra",
+                                  "postalCode": "411001",
+                                  "country": "India",
+                                  "dateOfBirth": "1993-05-20"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long receiverId = objectMapper.readTree(receiverReg.getResponse().getContentAsString()).get("data").get("userId").asLong();
+        String receiverToken = objectMapper.readTree(receiverReg.getResponse().getContentAsString()).get("data").get("token").asText();
 
         MvcResult adminLogin = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -166,72 +191,89 @@ class AdminIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        JsonNode adminResponse = objectMapper.readTree(adminLogin.getResponse().getContentAsString());
-        String adminToken = adminResponse.get("data").get("token").asText();
+        String adminToken = objectMapper.readTree(adminLogin.getResponse().getContentAsString()).get("data").get("token").asText();
 
-        mockMvc.perform(post("/api/accounts")
-                        .header("Authorization", "Bearer " + userToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "accountType": "SAVINGS",
-                                  "openingBalance": 1000.00
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("KYC must be verified before submitting an account opening request"));
-
-        mockMvc.perform(patch("/api/admin/customers/{userId}/kyc", userId)
+        // Verify KYC for both
+        mockMvc.perform(patch("/api/admin/customers/{userId}/kyc", senderId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "kycStatus": "VERIFIED"
-                                }
-                                """))
+                        .content("{\"kycStatus\":\"VERIFIED\"}"))
                 .andExpect(status().isOk());
 
-        MvcResult requestResult = mockMvc.perform(post("/api/accounts")
-                        .header("Authorization", "Bearer " + userToken)
+        mockMvc.perform(patch("/api/admin/customers/{userId}/kyc", receiverId)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content("{\"kycStatus\":\"VERIFIED\"}"))
+                .andExpect(status().isOk());
+
+        // Create accounts
+        MvcResult senderAccResult = mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accountType\":\"SAVINGS\",\"openingBalance\":100000.00}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String senderAccountId = objectMapper.readTree(senderAccResult.getResponse().getContentAsString()).get("data").get("accountId").asText();
+
+        MvcResult receiverAccResult = mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + receiverToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accountType\":\"SAVINGS\",\"openingBalance\":5000.00}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String receiverAccountNumber = objectMapper.readTree(receiverAccResult.getResponse().getContentAsString()).get("data").get("accountNumber").asText();
+
+        // Add Beneficiary
+        MvcResult benResult = mockMvc.perform(post("/api/beneficiaries")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("{\"nickname\":\"Sohan\",\"bankName\":\"Internal Bank\",\"accountNumber\":\"%s\"}", receiverAccountNumber)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String beneficiaryId = objectMapper.readTree(benResult.getResponse().getContentAsString()).get("data").get("beneficiaryId").asText();
+
+        // Initiate high value transfer >= 50,000
+        MvcResult transferResult = mockMvc.perform(post("/api/transfers")
+                        .header("Authorization", "Bearer " + senderToken)
+                        .header("Idempotency-Key", "test-admin-trf-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
                                 {
-                                  "accountType": "SAVINGS",
-                                  "openingBalance": 1000.00
+                                  "fromAccountId": "%s",
+                                  "beneficiaryId": "%s",
+                                  "amount": 60000.00,
+                                  "currency": "INR",
+                                  "remarks": "High value business deal",
+                                  "channel": "ONLINE_BANKING"
                                 }
-                                """))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.data.status").value("PENDING"))
-                .andExpect(jsonPath("$.data.approvedAccountNumber").doesNotExist())
+                                """, senderAccountId, beneficiaryId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_APPROVAL"))
                 .andReturn();
 
-        JsonNode requestResponse = objectMapper.readTree(requestResult.getResponse().getContentAsString());
-        long requestId = requestResponse.get("data").get("id").asLong();
+        String transferId = objectMapper.readTree(transferResult.getResponse().getContentAsString()).get("data").get("transferId").asText();
 
-        mockMvc.perform(get("/api/accounts")
-                        .header("Authorization", "Bearer " + userToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data.length()").value(0));
-
-        mockMvc.perform(get("/api/admin/account-requests")
+        // Admin checks overview metrics
+        mockMvc.perform(get("/api/admin/overview")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].requesterUsername").value("rohan"))
-                .andExpect(jsonPath("$.data[0].status").value("PENDING"));
+                .andExpect(jsonPath("$.data.pendingTransfers").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
 
-        mockMvc.perform(patch("/api/admin/account-requests/{requestId}/approve", requestId)
+        // Admin checks pending transfers queue
+        mockMvc.perform(get("/api/admin/transfers/pending")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("APPROVED"))
-                .andExpect(jsonPath("$.data.approvedAccountNumber").value(org.hamcrest.Matchers.matchesPattern("9\\d{9}")));
+                .andExpect(jsonPath("$.data.content[0].transferId").value(transferId))
+                .andExpect(jsonPath("$.data.content[0].amount").value(60000.00))
+                .andExpect(jsonPath("$.data.content[0].status").value("PENDING_APPROVAL"));
 
-        mockMvc.perform(get("/api/accounts")
-                        .header("Authorization", "Bearer " + userToken))
+        // Admin approves transfer
+        mockMvc.perform(patch("/api/admin/transfers/{transferId}/approve", transferId)
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].accountNumber").value(org.hamcrest.Matchers.matchesPattern("9\\d{9}")));
+                .andExpect(jsonPath("$.data.status").value("POSTED"));
     }
+
 
     @Test
     void adminCustomerRegistrySupportsPaginationSearchAndDetail() throws Exception {

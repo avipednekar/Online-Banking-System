@@ -23,17 +23,6 @@ function getRiskExposure(overview) {
   return "Low";
 }
 
-function getQueueDepth(count) {
-  if (count > 12) {
-    return "Heavy";
-  }
-
-  if (count > 4) {
-    return "Active";
-  }
-
-  return "Normal";
-}
 
 function getVerificationRate(overview) {
   const totalCustomers = Number(overview?.totalCustomers || 0);
@@ -64,10 +53,6 @@ function HealthScoreCard({ overview }) {
         <div>
           <span>Sanction Hits</span>
           <strong>{Number(overview?.rejectedKyc || 0)}</strong>
-        </div>
-        <div>
-          <span>Queue Depth</span>
-          <strong>{getQueueDepth(Number(overview?.pendingAccountRequests || 0))}</strong>
         </div>
       </div>
     </article>

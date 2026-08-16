@@ -23,31 +23,8 @@ function getInitials(value) {
     .join("");
 }
 
-function getRequestStatusTone(status) {
-  const normalized = String(status || "").toUpperCase();
-
-  if (normalized === "APPROVED") {
-    return "approved";
-  }
-
-  if (normalized === "REJECTED") {
-    return "rejected";
-  }
-
-  return "pending";
-}
-
-function RequestStatusBadge({ status }) {
-  return (
-    <span className={`kyc-pill ${getRequestStatusTone(status)}`}>
-      {String(status || "PENDING").replace(/_/g, " ")}
-    </span>
-  );
-}
-
 const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
   customer,
-  relatedRequest,
   error,
   isLoading,
   onClose
@@ -124,17 +101,6 @@ const CustomerDetailDrawer = memo(function CustomerDetailDrawer({
               <p>Customer ID: {customer.customerId}</p>
               <p>Username: @{customer.username}</p>
             </div>
-
-            {relatedRequest ? (
-              <div className="vault-admin-detail-section">
-                <span>Pending account request</span>
-                <p>
-                  {relatedRequest.accountType} request for{" "}
-                  {formatCurrency(relatedRequest.openingBalance)}
-                </p>
-                <RequestStatusBadge status={relatedRequest.status} />
-              </div>
-            ) : null}
           </div>
         ) : null}
       </aside>
@@ -219,8 +185,6 @@ function SummaryCells({ customer }) {
 }
 
 const KycGridRow = memo(function KycGridRow({ customer, data }) {
-  const relatedRequest = data.getPendingRequestForCustomer(customer.userId);
-
   const handleOpenDetail = useCallback(async () => {
     await data.onOpenCustomer(customer.userId);
   }, [customer.userId, data]);
@@ -281,7 +245,6 @@ const KycGridRow = memo(function KycGridRow({ customer, data }) {
             Reject
           </button>
         </div>
-        {relatedRequest ? <RequestStatusBadge status={relatedRequest.status} /> : null}
       </div>
     </article>
   );
@@ -350,8 +313,7 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
   onApproveKyc,
   onRejectKyc,
   onOpenCustomer,
-  onCloseDetail,
-  getPendingRequestForCustomer
+  onCloseDetail
 }) {
   const [rowHeight, setRowHeight] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768 ? 136 : 104
@@ -392,15 +354,11 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
       isMutating,
       onApproveKyc,
       onRejectKyc,
-      onOpenCustomer,
-      getPendingRequestForCustomer
+      onOpenCustomer
     }),
-    [customers, getPendingRequestForCustomer, isMutating, onApproveKyc, onOpenCustomer, onRejectKyc]
+    [customers, isMutating, onApproveKyc, onOpenCustomer, onRejectKyc]
   );
 
-  const selectedRequest = selectedCustomerDetail
-    ? getPendingRequestForCustomer(selectedCustomerDetail.userId)
-    : null;
   const showInitialSkeleton = isLoading && !hasLoadedOnce && customers.length === 0 && !error;
   const showEmptyState = !isLoading && !error && customers.length === 0;
   const showList = !error && customers.length > 0;
@@ -538,7 +496,6 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
       {selectedCustomerId ? (
         <CustomerDetailDrawer
           customer={selectedCustomerDetail}
-          relatedRequest={selectedRequest}
           error={selectedCustomerError}
           isLoading={isDetailLoading}
           onClose={onCloseDetail}

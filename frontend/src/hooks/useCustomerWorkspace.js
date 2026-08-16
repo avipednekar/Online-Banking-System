@@ -30,13 +30,13 @@ export function useCustomerWorkspace() {
   const transferForm = useForm(initialTransferForm);
   const beneficiaryForm = useForm(initialBeneficiaryForm);
   const [accounts, setAccounts] = useState([]);
-  const [accountRequests, setAccountRequests] = useState([]);
+
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [amount, setAmount] = useState("100.00");
   const [accountsError, setAccountsError] = useState("");
-  const [accountRequestsError, setAccountRequestsError] = useState("");
+
   const [beneficiariesError, setBeneficiariesError] = useState("");
   const [transactionsError, setTransactionsError] = useState("");
   const [beneficiaryLookup, setBeneficiaryLookup] = useState(null);
@@ -105,21 +105,6 @@ export function useCustomerWorkspace() {
     }
   }
 
-  async function loadAccountRequests() {
-    tracker.startAction("accountRequests");
-    setAccountRequestsError("");
-    try {
-      const accessToken = await getValidAccessToken();
-      const data = await customerService.getAccountRequests(accessToken);
-      setAccountRequests(data);
-    } catch (error) {
-      if (!handleSessionError(error, "Unable to load account requests")) {
-        setAccountRequestsError(error.message || "Unable to load account requests.");
-      }
-    } finally {
-      tracker.finishAction("accountRequests");
-    }
-  }
 
   async function loadTransactions(accountNumber) {
     tracker.startAction("transactions");
@@ -140,7 +125,7 @@ export function useCustomerWorkspace() {
 
   useEffect(() => {
     loadAccounts();
-    loadAccountRequests();
+
     loadBeneficiaries();
   }, []);
 
@@ -205,9 +190,9 @@ export function useCustomerWorkspace() {
         ...accountForm.values,
         openingBalance: Number(accountForm.values.openingBalance)
       });
-      setAccountRequests((current) => [created, ...current]);
+      setAccounts((current) => [created, ...current]);
       accountForm.reset(initialAccountForm);
-      notifySuccess("Request submitted", `Account request #${created.id} is waiting for admin approval.`);
+      notifySuccess("Account created", `Account #${created.accountNumber} has been opened.`);
     } catch (error) {
       if (!handleSessionError(error, "Account creation failed")) {
         accountForm.setErrors(error.fields || {});
@@ -347,7 +332,7 @@ export function useCustomerWorkspace() {
   return {
     user,
     accounts,
-    accountRequests,
+
     beneficiaries,
     activeBeneficiaries,
     pendingBeneficiaries,
@@ -364,12 +349,12 @@ export function useCustomerWorkspace() {
     beneficiaryLookupError,
     tracker,
     accountsError,
-    accountRequestsError,
+
     beneficiariesError,
     transactionsError,
     logoutUser,
     loadAccounts,
-    loadAccountRequests,
+
     loadBeneficiaries,
     loadTransactions,
     createAccount,

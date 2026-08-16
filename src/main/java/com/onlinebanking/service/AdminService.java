@@ -8,24 +8,24 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.AdminCustomerDetailResponse;
 import com.onlinebanking.dto.AdminCustomerListItemResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
 import com.onlinebanking.dto.PagedResponse;
+import com.onlinebanking.dto.TransferReceiptResponse;
 import com.onlinebanking.dto.UpdateKycStatusRequest;
 import com.onlinebanking.exception.ResourceNotFoundException;
-import com.onlinebanking.model.AccountOpeningRequest;
-import com.onlinebanking.model.AccountOpeningRequestStatus;
 import com.onlinebanking.model.BankUser;
 import com.onlinebanking.model.BeneficiaryStatus;
 import com.onlinebanking.model.CustomerProfile; 
 import com.onlinebanking.model.KycStatus;
-import com.onlinebanking.repository.AccountOpeningRequestRepository;
+import com.onlinebanking.model.TransferRecord;
+import com.onlinebanking.model.TransferStatus;
 import com.onlinebanking.repository.AccountRepository;
 import com.onlinebanking.repository.BankUserRepository;
 import com.onlinebanking.repository.BeneficiaryRepository;
 import com.onlinebanking.repository.CustomerProfileRepository;
+import com.onlinebanking.repository.TransferRecordRepository;
 import com.onlinebanking.util.NormalizationUtils;
 
 import jakarta.transaction.Transactional;
@@ -37,25 +37,22 @@ public class AdminService {
 
     private final BankUserRepository bankUserRepository;
     private final CustomerProfileRepository customerProfileRepository;
-    private final AccountOpeningRequestRepository accountOpeningRequestRepository;
     private final AccountRepository accountRepository;
     private final BeneficiaryRepository beneficiaryRepository;
-    private final BankingService bankingService;
+    private final TransferRecordRepository transferRecordRepository;
     private final AuditService auditService;
 
     public AdminService(BankUserRepository bankUserRepository,
                         CustomerProfileRepository customerProfileRepository,
-                        AccountOpeningRequestRepository accountOpeningRequestRepository,
                         AccountRepository accountRepository,
                         BeneficiaryRepository beneficiaryRepository,
-                        BankingService bankingService,
+                        TransferRecordRepository transferRecordRepository,
                         AuditService auditService) {
         this.bankUserRepository = bankUserRepository;
         this.customerProfileRepository = customerProfileRepository;
-        this.accountOpeningRequestRepository = accountOpeningRequestRepository;
         this.accountRepository = accountRepository;
         this.beneficiaryRepository = beneficiaryRepository;
-        this.bankingService = bankingService;
+        this.transferRecordRepository = transferRecordRepository;
         this.auditService = auditService;
     }
 
@@ -65,9 +62,9 @@ public class AdminService {
                 customerProfileRepository.countByKycStatus(KycStatus.PENDING),
                 customerProfileRepository.countByKycStatus(KycStatus.VERIFIED),
                 customerProfileRepository.countByKycStatus(KycStatus.REJECTED),
-                accountOpeningRequestRepository.countByStatus(AccountOpeningRequestStatus.PENDING),
                 accountRepository.count(),
-                beneficiaryRepository.countByStatus(BeneficiaryStatus.ACTIVE)
+                beneficiaryRepository.countByStatus(BeneficiaryStatus.ACTIVE),
+                transferRecordRepository.countByStatus(TransferStatus.PENDING_APPROVAL)
         );
     }
 
@@ -101,10 +98,14 @@ public class AdminService {
         return toCustomerDetailResponse(profile);
     }
 
-    public List<AccountOpeningRequestResponse> getPendingAccountRequests() {
-        return accountOpeningRequestRepository.findByStatusOrderByCreatedAtAsc(AccountOpeningRequestStatus.PENDING).stream()
-                .map(bankingService::toAccountOpeningRequestResponse)
-                .toList();
+    public PagedResponse<TransferReceiptResponse> getPendingTransfersPaged(int page, int size) {
+        return PagedResponse.from(
+                transferRecordRepository.findByStatusOrderByCreatedAtDesc(
+                        TransferStatus.PENDING_APPROVAL,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"))
+                ),
+                this::toTransferReceiptResponse
+        );
     }
 
     @Transactional
@@ -117,14 +118,6 @@ public class AdminService {
         profile.setKycStatus(request.kycStatus());
         CustomerProfile savedProfile = customerProfileRepository.save(profile);
 
-        if (request.kycStatus() == KycStatus.VERIFIED) {
-            BankUser admin = bankUserRepository.findByUsernameIgnoreCase(adminUsername)
-                    .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
-            accountOpeningRequestRepository.findByRequesterUsernameIgnoreCaseOrderByCreatedAtDesc(user.getUsername()).stream()
-                    .filter(req -> req.getStatus() == AccountOpeningRequestStatus.PENDING)
-                    .forEach(req -> bankingService.approveAccountOpeningRequest(admin, req));
-        }
-
         auditService.log(
                 adminUsername,
                 "KYC_STATUS_UPDATED",
@@ -134,16 +127,6 @@ public class AdminService {
         );
         log.info("Admin {} set KYC status {} for user {}", adminUsername, request.kycStatus(), user.getUsername());
         return toCustomerDetailResponse(savedProfile);
-    }
-
-    @Transactional
-    public AccountOpeningRequestResponse approveAccountRequest(String adminUsername, Long requestId) {
-        BankUser admin = bankUserRepository.findByUsernameIgnoreCase(adminUsername)
-                .orElseThrow(() -> new ResourceNotFoundException("Admin user not found"));
-        AccountOpeningRequest accountOpeningRequest = accountOpeningRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account opening request not found"));
-
-        return bankingService.approveAccountOpeningRequest(admin, accountOpeningRequest);
     }
 
     private AdminCustomerListItemResponse toCustomerListItemResponse(CustomerProfile profile) {
@@ -180,4 +163,23 @@ public class AdminService {
                 profile.getKycStatus().name()
         );
     }
+
+    private TransferReceiptResponse toTransferReceiptResponse(TransferRecord transfer) {
+        return new TransferReceiptResponse(
+                transfer.getTransferId(),
+                transfer.getPostingBatch() == null ? null : transfer.getPostingBatch().getPostingBatchId(),
+                transfer.getFromAccount().getAccountId(),
+                transfer.getToAccount().getAccountId(),
+                transfer.getBeneficiary().getBeneficiaryId(),
+                transfer.getAmount(),
+                transfer.getCurrencyCode(),
+                transfer.getChannel(),
+                transfer.getStatus(),
+                transfer.getRemarks(),
+                transfer.getFailureCode(),
+                transfer.getCreatedAt(),
+                transfer.getCompletedAt()
+        );
+    }
 }
+

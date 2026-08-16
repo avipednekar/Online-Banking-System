@@ -1,7 +1,7 @@
 package com.onlinebanking;
 
 import com.onlinebanking.dto.CreateAccountRequest;
-import com.onlinebanking.dto.AccountOpeningRequestResponse;
+import com.onlinebanking.dto.AccountResponse;
 import com.onlinebanking.dto.BeneficiaryRequest;
 import com.onlinebanking.dto.BeneficiaryLookupResponse;
 import com.onlinebanking.dto.RegisterRequest;
@@ -51,7 +51,7 @@ class BankingServiceIntegrationTest {
     @Test
     void depositIncreasesBalance() {
         Long aliceId = authService.register(registerRequest("alice", "alice@example.com")).userId();
-        String accountNumber = submitAndApproveAccount("alice", aliceId, AccountType.SAVINGS, "1000.00").approvedAccountNumber();
+        String accountNumber = submitAndApproveAccount("alice", aliceId, AccountType.SAVINGS, "1000.00").accountNumber();
 
         BigDecimal balance = bankingService.deposit("alice", accountNumber, new BigDecimal("250.00")).balance();
 
@@ -61,7 +61,7 @@ class BankingServiceIntegrationTest {
     @Test
     void withdrawRespectsMinimumBalance() {
         Long bobId = authService.register(registerRequest("bob", "bob@example.com")).userId();
-        String accountNumber = submitAndApproveAccount("bob", bobId, AccountType.SAVINGS, "500.00").approvedAccountNumber();
+        String accountNumber = submitAndApproveAccount("bob", bobId, AccountType.SAVINGS, "500.00").accountNumber();
 
         assertThrows(BusinessException.class,
                 () -> bankingService.withdraw("bob", accountNumber, new BigDecimal("450.01")));
@@ -72,8 +72,8 @@ class BankingServiceIntegrationTest {
         Long charlieId = authService.register(registerRequest("charlie", "charlie@example.com")).userId();
         Long dianaId = authService.register(registerRequest("diana", "diana@example.com")).userId();
 
-        String senderAccount = submitAndApproveAccount("charlie", charlieId, AccountType.SAVINGS, "1000.00").approvedAccountNumber();
-        String receiverAccount = submitAndApproveAccount("diana", dianaId, AccountType.CURRENT, "800.00").approvedAccountNumber();
+        String senderAccount = submitAndApproveAccount("charlie", charlieId, AccountType.SAVINGS, "1000.00").accountNumber();
+        String receiverAccount = submitAndApproveAccount("diana", dianaId, AccountType.CURRENT, "800.00").accountNumber();
         beneficiaryService.createBeneficiary("charlie", new BeneficiaryRequest("Diana", "Internal Bank", receiverAccount));
 
         bankingService.transfer("charlie", new TransferRequest(senderAccount, receiverAccount, new BigDecimal("300.00")));
@@ -87,8 +87,8 @@ class BankingServiceIntegrationTest {
         Long edgarId = authService.register(registerRequest("edgar", "edgar@example.com")).userId();
         Long fionaId = authService.register(registerRequest("fiona", "fiona@example.com")).userId();
 
-        String senderAccount = submitAndApproveAccount("edgar", edgarId, AccountType.SAVINGS, "1200.00").approvedAccountNumber();
-        String receiverAccount = submitAndApproveAccount("fiona", fionaId, AccountType.SAVINGS, "900.00").approvedAccountNumber();
+        String senderAccount = submitAndApproveAccount("edgar", edgarId, AccountType.SAVINGS, "1200.00").accountNumber();
+        String receiverAccount = submitAndApproveAccount("fiona", fionaId, AccountType.SAVINGS, "900.00").accountNumber();
 
         assertThrows(BusinessException.class,
                 () -> bankingService.transfer("edgar", new TransferRequest(senderAccount, receiverAccount, new BigDecimal("100.00"))));
@@ -98,7 +98,7 @@ class BankingServiceIntegrationTest {
     void beneficiaryLookupReturnsVerifiedAccountDetails() {
         authService.register(registerRequest("harish", "harish@example.com"));
         Long ireneId = authService.register(registerRequest("irene", "irene@example.com")).userId();
-        String receiverAccount = submitAndApproveAccount("irene", ireneId, AccountType.SAVINGS, "900.00").approvedAccountNumber();
+        String receiverAccount = submitAndApproveAccount("irene", ireneId, AccountType.SAVINGS, "900.00").accountNumber();
 
         BeneficiaryLookupResponse lookup = beneficiaryService.lookupBeneficiary("harish", receiverAccount);
 
@@ -111,7 +111,7 @@ class BankingServiceIntegrationTest {
     void beneficiaryCreationActivatesImmediatelyWithoutOtp() {
         authService.register(registerRequest("jia", "jia@example.com"));
         Long karanId = authService.register(registerRequest("karan", "karan@example.com")).userId();
-        String receiverAccount = submitAndApproveAccount("karan", karanId, AccountType.SAVINGS, "900.00").approvedAccountNumber();
+        String receiverAccount = submitAndApproveAccount("karan", karanId, AccountType.SAVINGS, "900.00").accountNumber();
 
         var beneficiary = beneficiaryService.createBeneficiary(
                 "jia",
@@ -149,8 +149,8 @@ class BankingServiceIntegrationTest {
         Long mohanId = authService.register(registerRequest("mohan", "mohan@example.com")).userId();
         Long nitaId = authService.register(registerRequest("nita", "nita@example.com")).userId();
 
-        String firstAccount = submitAndApproveAccount("mohan", mohanId, AccountType.SAVINGS, "900.00").approvedAccountNumber();
-        String secondAccount = submitAndApproveAccount("nita", nitaId, AccountType.CURRENT, "950.00").approvedAccountNumber();
+        String firstAccount = submitAndApproveAccount("mohan", mohanId, AccountType.SAVINGS, "900.00").accountNumber();
+        String secondAccount = submitAndApproveAccount("nita", nitaId, AccountType.CURRENT, "950.00").accountNumber();
 
         beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Mohan", "Internal Bank", firstAccount));
         beneficiaryService.createBeneficiary("lina", new BeneficiaryRequest("Nita", "Internal Bank", secondAccount));
@@ -162,10 +162,10 @@ class BankingServiceIntegrationTest {
     void generatedAccountNumberUsesExpectedPattern() {
         Long geetaId = authService.register(registerRequest("geeta", "geeta@example.com")).userId();
 
-        String firstSavingsAccount = submitAndApproveAccount("geeta", geetaId, AccountType.SAVINGS, "1000.00").approvedAccountNumber();
-        String secondSavingsAccount = submitAndApproveAccount("geeta", geetaId, AccountType.SAVINGS, "1200.00").approvedAccountNumber();
-        String firstCurrentAccount = submitAndApproveAccount("geeta", geetaId, AccountType.CURRENT, "1500.00").approvedAccountNumber();
-        String secondCurrentAccount = submitAndApproveAccount("geeta", geetaId, AccountType.CURRENT, "1700.00").approvedAccountNumber();
+        String firstSavingsAccount = submitAndApproveAccount("geeta", geetaId, AccountType.SAVINGS, "1000.00").accountNumber();
+        String secondSavingsAccount = submitAndApproveAccount("geeta", geetaId, AccountType.SAVINGS, "1200.00").accountNumber();
+        String firstCurrentAccount = submitAndApproveAccount("geeta", geetaId, AccountType.CURRENT, "1500.00").accountNumber();
+        String secondCurrentAccount = submitAndApproveAccount("geeta", geetaId, AccountType.CURRENT, "1700.00").accountNumber();
 
         assertTrue(firstSavingsAccount.matches("9\\d{9}"));
         assertTrue(secondSavingsAccount.matches("9\\d{9}"));
@@ -176,32 +176,15 @@ class BankingServiceIntegrationTest {
     }
 
     @Test
-    void accountOpeningRequestRequiresVerifiedKyc() {
+    void accountCreationRequiresVerifiedKyc() {
         authService.register(registerRequest("omkar", "omkar@example.com"));
 
         assertThrows(BusinessException.class,
-                () -> bankingService.submitAccountOpeningRequest("omkar",
+                () -> bankingService.createAccount("omkar",
                         new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("1000.00"))));
     }
 
-    @Test
-    void accountNumberIsGeneratedOnlyAfterAdminApproval() {
-        Long priyaId = authService.register(registerRequest("priya", "priya@example.com")).userId();
-        adminService.updateKycStatus("admin", priyaId, new UpdateKycStatusRequest(KycStatus.VERIFIED));
 
-        AccountOpeningRequestResponse submitted = bankingService.submitAccountOpeningRequest(
-                "priya",
-                new CreateAccountRequest(AccountType.SAVINGS, new BigDecimal("1400.00"))
-        );
-
-        assertEquals(null, submitted.approvedAccountNumber());
-        assertEquals(0, bankingService.getAccountsForUser("priya").size());
-
-        AccountOpeningRequestResponse approved = adminService.approveAccountRequest("admin", submitted.id());
-
-        assertTrue(approved.approvedAccountNumber().matches("9\\d{9}"));
-        assertEquals(1, bankingService.getAccountsForUser("priya").size());
-    }
 
     @Test
     void registrationRejectsNonIndiaCountry() {
@@ -212,7 +195,7 @@ class BankingServiceIntegrationTest {
     @Test
     void depositRejectsLegacyNonIndiaProfile() {
         Long samirId = authService.register(registerRequest("samir", "samir@example.com")).userId();
-        String accountNumber = submitAndApproveAccount("samir", samirId, AccountType.SAVINGS, "1200.00").approvedAccountNumber();
+        String accountNumber = submitAndApproveAccount("samir", samirId, AccountType.SAVINGS, "1200.00").accountNumber();
 
         var profile = customerProfileRepository.findByUserUsernameIgnoreCase("samir").orElseThrow();
         profile.setCountry("Singapore");
@@ -226,16 +209,15 @@ class BankingServiceIntegrationTest {
         return Long.parseLong(accountNumber.substring(accountNumber.length() - 5));
     }
 
-    private AccountOpeningRequestResponse submitAndApproveAccount(String username,
+    private AccountResponse submitAndApproveAccount(String username,
                                                                   Long userId,
                                                                   AccountType accountType,
                                                                   String openingBalance) {
         adminService.updateKycStatus("admin", userId, new UpdateKycStatusRequest(KycStatus.VERIFIED));
-        AccountOpeningRequestResponse request = bankingService.submitAccountOpeningRequest(
+        return bankingService.createAccount(
                 username,
                 new CreateAccountRequest(accountType, new BigDecimal(openingBalance))
         );
-        return adminService.approveAccountRequest("admin", request.id());
     }
 
     private RegisterRequest registerRequest(String username, String email) {

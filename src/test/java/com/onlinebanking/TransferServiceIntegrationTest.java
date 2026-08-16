@@ -225,11 +225,11 @@ class TransferServiceIntegrationTest {
                                            AccountType accountType,
                                            String openingBalance) {
         adminService.updateKycStatus("admin", userId, new UpdateKycStatusRequest(KycStatus.VERIFIED));
-        var request = bankingService.submitAccountOpeningRequest(
+        var account = bankingService.createAccount(
                 username,
                 new CreateAccountRequest(accountType, new BigDecimal(openingBalance))
         );
-        return adminService.approveAccountRequest("admin", request.id()).approvedAccountNumber();
+        return account.accountNumber();
     }
 
     private RegisterRequest registerRequest(String username, String email) {

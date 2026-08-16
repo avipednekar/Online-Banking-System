@@ -2,6 +2,7 @@ import { memo } from "react";
 import {
   CheckCheck,
   CircleAlert,
+  ShieldAlert,
   Users,
   WalletCards
 } from "lucide-react";
@@ -84,13 +85,12 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
       ) : null}
 
       {!error && overview ? (
-        <div className="vault-admin-kpi-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="vault-admin-kpi-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <SummaryCard
             icon={WalletCards}
             label="Total Accounts"
             value={Number(overview?.totalAccounts || 0).toLocaleString()}
             detail="Bank accounts under platform management."
-            trend={`${Number(overview?.pendingAccountRequests || 0)} pending approvals`}
           />
           <SummaryCard
             icon={Users}
@@ -109,6 +109,14 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
             trend="Priority review"
           />
           <SummaryCard
+            icon={ShieldAlert}
+            label="Pending Transfers"
+            value={Number(overview?.pendingTransfers || 0).toLocaleString()}
+            detail="Transfers (≥ ₹50k) awaiting authorization."
+            tone={Number(overview?.pendingTransfers || 0) > 0 ? "warning" : "default"}
+            trend={Number(overview?.pendingTransfers || 0) > 0 ? "Action Required" : "Queue Cleared"}
+          />
+          <SummaryCard
             icon={CheckCheck}
             label="Verified KYC"
             value={Number(overview?.verifiedKyc || 0).toLocaleString()}
@@ -121,3 +129,4 @@ export const AdminOverviewPanel = memo(function AdminOverviewPanel({
     </Panel>
   );
 });
+

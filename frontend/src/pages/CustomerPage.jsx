@@ -446,10 +446,7 @@ export default function CustomerPage() {
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [visibleAccountNumbers, setVisibleAccountNumbers] = useState(() => new Set());
 
-  const verifiedRequest = useMemo(
-    () => workspace.accountRequests.find((e) => String(e.status || "").toUpperCase() === "PENDING"),
-    [workspace.accountRequests]
-  );
+
 
   function toggleAccountNumber(accountNumber) {
     setVisibleAccountNumbers((current) => {
@@ -527,16 +524,7 @@ export default function CustomerPage() {
           </div>
         </section>
 
-        {/* ── Pending Request Banner ── */}
-        {verifiedRequest ? (
-          <section className="vault-dashboard-request-banner">
-            <div>
-              <span className="vault-dashboard-status-badge is-pending">Pending Request</span>
-              <strong>{verifiedRequest.accountType} account — {formatMoney(verifiedRequest.openingBalance)}</strong>
-            </div>
-            <span>Submitted {formatCompactDate(verifiedRequest.createdAt)}</span>
-          </section>
-        ) : null}
+
 
         {/* ── Create Account (conditional) ── */}
         <CreateAccountCard workspace={workspace} open={createAccountOpen} onToggle={() => setCreateAccountOpen((v) => !v)} />

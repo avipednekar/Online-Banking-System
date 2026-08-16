@@ -7,9 +7,7 @@ export const customerService = {
   getAccount(token, accountNumber) {
     return apiRequest(`/accounts/${accountNumber}`, { token });
   },
-  getAccountRequests(token) {
-    return apiRequest("/accounts/requests", { token });
-  },
+
   createAccount(token, payload) {
     return apiRequest("/accounts", {
       method: "POST",

@@ -3,7 +3,6 @@ package com.onlinebanking.controller;
 import com.onlinebanking.dto.AdminCustomerDetailResponse;
 import com.onlinebanking.dto.AdminCustomerListItemResponse;
 import com.onlinebanking.dto.AdminOverviewResponse;
-import com.onlinebanking.dto.AccountOpeningRequestResponse;
 import com.onlinebanking.dto.ApiResponse;
 import com.onlinebanking.dto.PagedResponse;
 import com.onlinebanking.dto.TransferReceiptResponse;
@@ -61,13 +60,7 @@ public class AdminController {
         ));
     }
 
-    @GetMapping("/account-requests")
-    public ResponseEntity<ApiResponse<List<AccountOpeningRequestResponse>>> getPendingAccountRequests() {
-        return ResponseEntity.ok(ApiResponse.success(
-                "Pending account opening requests fetched successfully",
-                adminService.getPendingAccountRequests()
-        ));
-    }
+
 
     @PatchMapping("/customers/{userId}/kyc")
     public ResponseEntity<ApiResponse<AdminCustomerDetailResponse>> updateKycStatus(Authentication authentication,
@@ -79,12 +72,15 @@ public class AdminController {
         ));
     }
 
-    @PatchMapping("/account-requests/{requestId}/approve")
-    public ResponseEntity<ApiResponse<AccountOpeningRequestResponse>> approveAccountRequest(Authentication authentication,
-                                                                                           @PathVariable Long requestId) {
+
+
+    @GetMapping("/transfers/pending")
+    public ResponseEntity<ApiResponse<PagedResponse<TransferReceiptResponse>>> getPendingTransfers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Account opening request approved successfully",
-                adminService.approveAccountRequest(authentication.getName(), requestId)
+                "Pending transfers fetched successfully",
+                adminService.getPendingTransfersPaged(page, Math.min(size, 50))
         ));
     }
 
@@ -97,3 +93,4 @@ public class AdminController {
         ));
     }
 }
+

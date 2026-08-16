@@ -2,7 +2,9 @@ package com.onlinebanking;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
 @SpringBootApplication
 public class OnlineBankingApplication {
 
@@ -10,3 +12,4 @@ public class OnlineBankingApplication {
         SpringApplication.run(OnlineBankingApplication.class, args);
     }
 }
+

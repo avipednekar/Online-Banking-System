@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeftRight,
   CalendarDays,
   ChevronRight,
   LayoutDashboard,
@@ -34,10 +35,10 @@ const NAV_ITEMS = [
     icon: ShieldCheck
   },
   {
-    to: "/admin/accounts",
-    label: "Accounts",
+    to: "/admin/transfers",
+    label: "Transfers",
     description: "Approval queue",
-    icon: WalletCards
+    icon: ArrowLeftRight
   }
 ];
 
@@ -54,11 +55,12 @@ const PAGE_META = {
     title: "KYC Management",
     subtitle: "Prioritized verification queue for customers that still need administrative action."
   },
-  "/admin/accounts": {
-    title: "Account Approvals",
-    subtitle: "Approve or monitor pending account-opening requests after verification controls are complete."
+  "/admin/transfers": {
+    title: "Transfer Authorizations",
+    subtitle: "Review and approve high-value transactions that exceed institutional security thresholds."
   }
 };
+
 
 function formatHeaderDate(value) {
   return value.toLocaleDateString("en-IN", {
@@ -89,11 +91,11 @@ export default function AdminLayout() {
   const todayLabel = formatHeaderDate(new Date());
   const overviewBusy = workspace.tracker.isPending("overview");
   const customersBusy = workspace.tracker.isPending("customers");
-  const requestsBusy = workspace.tracker.isPending("accountRequests");
+
   const actionBusy =
     workspace.tracker.isPending("kyc") ||
-    workspace.tracker.isPending("approveAccountRequest");
-  const shellBusy = overviewBusy || customersBusy || requestsBusy;
+    workspace.tracker.isPending("approveTransfer");
+  const shellBusy = overviewBusy || customersBusy;
   const pageMeta = useMemo(() => getPageMeta(location.pathname), [location.pathname]);
 
   useEffect(() => {
@@ -118,9 +120,10 @@ export default function AdminLayout() {
     await Promise.all([
       workspace.loadOverview(),
       workspace.refreshCustomerList(),
-      workspace.loadAccountRequests()
+      workspace.loadPendingTransfers()
     ]);
-  }, [workspace.loadAccountRequests, workspace.loadOverview, workspace.refreshCustomerList]);
+  }, [workspace.loadOverview, workspace.refreshCustomerList, workspace.loadPendingTransfers]);
+
 
   return (
     <section className="vault-admin-dashboard vault-admin-layout min-h-screen px-3 py-3 md:px-4 md:py-4 lg:h-screen lg:overflow-hidden">

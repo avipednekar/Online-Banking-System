@@ -19,7 +19,7 @@ const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const DashboardPage = lazy(() => import("./pages/admin/DashboardPage"));
 const CustomerRegistryPage = lazy(() => import("./pages/admin/CustomerRegistryPage"));
 const KycManagementPage = lazy(() => import("./pages/admin/KycManagementPage"));
-const AccountApprovalsPage = lazy(() => import("./pages/admin/AccountApprovalsPage"));
+const TransferApprovalsPage = lazy(() => import("./pages/admin/TransferApprovalsPage"));
 
 export default function App() {
   const { authReady, authLoading, isAuthenticated, isAdmin } = useAuth();
@@ -60,9 +60,10 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="customers" element={<CustomerRegistryPage />} />
                 <Route path="kyc" element={<KycManagementPage />} />
-                <Route path="accounts" element={<AccountApprovalsPage />} />
+                <Route path="transfers" element={<TransferApprovalsPage />} />
               </Route>
             </Route>
+
 
             <Route path="*" element={<RoleAwareRedirect />} />
           </Routes>

@@ -90,11 +90,13 @@ http://localhost:5173
 
 ## Frontend architecture
 
-- `frontend/src/api/api.js`: centralized API client and error parsing
+## Frontend architecture
+
+- `frontend/src/services/api.js`: centralized API client and error parsing
 - `frontend/src/context/AuthContext.jsx`: session and authentication state
 - `frontend/src/components/auth`: onboarding and login UI
 - `frontend/src/components/customer`: customer banking dashboard
-- `frontend/src/components/admin`: admin KYC and customer management dashboard
+- `frontend/src/components/admin`: admin KYC, registry, and transfer approval dashboard
 - `frontend/src/hooks/useNotifications.js`: notification state
 - `frontend/src/utils`: shared formatters
 
@@ -104,17 +106,19 @@ http://localhost:5173
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/accounts`
-- `GET /api/accounts/requests`
 - `GET /api/accounts`
 - `GET /api/accounts/{accountNumber}`
 - `POST /api/accounts/{accountNumber}/deposit`
 - `POST /api/accounts/{accountNumber}/withdraw`
-- `POST /api/accounts/transfer`
+- `POST /api/transfers`
 - `GET /api/accounts/{accountNumber}/transactions`
 - `POST /api/beneficiaries`
 - `GET /api/beneficiaries`
-- `GET /api/admin/account-requests`
-- `PATCH /api/admin/account-requests/{requestId}/approve`
+- `GET /api/admin/overview`
+- `GET /api/admin/customers`
+- `PATCH /api/admin/customers/{userId}/kyc`
+- `GET /api/admin/transfers/pending`
+- `PATCH /api/admin/transfers/{transferId}/approve`
 
 ## Example API flow
 
@@ -153,7 +157,7 @@ Example auth response:
 }
 ```
 
-Submit an account opening request after KYC verification:
+Open an account after KYC verification:
 
 ```json
 POST /api/accounts
@@ -164,30 +168,28 @@ Authorization: Bearer <token>
 }
 ```
 
-The request remains pending until an admin approves it. Only after approval does the backend generate the account number in a fixed pattern such as:
-
-```text
-9123400001
-8456700001
-```
-
-Approve the request as admin:
-
-```text
-PATCH /api/admin/account-requests/{requestId}/approve
-```
-
-Transfer funds after approval:
+Transfer funds:
 
 ```json
-POST /api/accounts/transfer
+POST /api/transfers
 Authorization: Bearer <token>
+Idempotency-Key: idem-123456789
 {
-  "fromAccountNumber": "9123400001",
-  "toAccountNumber": "8456700001",
-  "amount": 250.00
+  "fromAccountId": "ACC-9123400001",
+  "beneficiaryId": "BEN-8456700001",
+  "amount": 250.00,
+  "currency": "INR",
+  "remarks": "Payment for services",
+  "channel": "ONLINE_BANKING"
 }
 ```
+
+Transfers of ₹50,000 or greater require administrative authorization. Approve high-value transfers as admin:
+
+```text
+PATCH /api/admin/transfers/{transferId}/approve
+```
+
 
 ## Advanced Transfer Architecture
 

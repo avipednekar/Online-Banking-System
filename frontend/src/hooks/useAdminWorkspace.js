@@ -18,7 +18,7 @@ export function useAdminWorkspace() {
   const { startAction, finishAction } = tracker;
   const [overview, setOverview] = useState(null);
   const [customers, setCustomers] = useState([]);
-  const [accountRequests, setAccountRequests] = useState([]);
+
   const [customerPage, setCustomerPage] = useState(0);
   const [customerPageSize, setCustomerPageSize] = useState(DEFAULT_CUSTOMER_PAGE_SIZE);
   const [customerTotalPages, setCustomerTotalPages] = useState(0);
@@ -31,10 +31,13 @@ export function useAdminWorkspace() {
   const [selectedCustomerError, setSelectedCustomerError] = useState("");
   const [overviewError, setOverviewError] = useState("");
   const [customersError, setCustomersError] = useState("");
-  const [requestsError, setRequestsError] = useState("");
+
   const [overviewLoaded, setOverviewLoaded] = useState(false);
   const [customersLoaded, setCustomersLoaded] = useState(false);
-  const [requestsLoaded, setRequestsLoaded] = useState(false);
+  const [pendingTransfers, setPendingTransfers] = useState([]);
+  const [pendingTransfersLoaded, setPendingTransfersLoaded] = useState(false);
+  const [pendingTransfersError, setPendingTransfersError] = useState("");
+
   const customerRequestIdRef = useRef(0);
   const detailRequestIdRef = useRef(0);
   const customerQueryRef = useRef({
@@ -45,15 +48,6 @@ export function useAdminWorkspace() {
   });
   const initStartedRef = useRef(false);
 
-  const pendingRequestByCustomerId = useMemo(
-    () =>
-      new Map(
-        accountRequests
-          .filter((request) => String(request.status || "").toUpperCase() === "PENDING")
-          .map((request) => [request.requesterId, request])
-      ),
-    [accountRequests]
-  );
 
   const handleSessionError = useCallback(
     (error, title) => {
@@ -134,22 +128,6 @@ export function useAdminWorkspace() {
     [finishAction, getValidAccessToken, handleSessionError, startAction]
   );
 
-  const loadAccountRequests = useCallback(async () => {
-    startAction("accountRequests");
-    setRequestsError("");
-    try {
-      const accessToken = await getValidAccessToken();
-      const data = await adminService.getAccountRequests(accessToken);
-      setAccountRequests(data);
-      setRequestsLoaded(true);
-    } catch (error) {
-      if (!handleSessionError(error, "Unable to load account request queue")) {
-        setRequestsError(error.message || "Unable to load account request queue.");
-      }
-    } finally {
-      finishAction("accountRequests");
-    }
-  }, [finishAction, getValidAccessToken, handleSessionError, startAction]);
 
   const loadCustomerDetail = useCallback(
     async (userId, { signal, preserveExisting = false } = {}) => {
@@ -230,23 +208,14 @@ export function useAdminWorkspace() {
 
     initStartedRef.current = true;
 
-    void Promise.allSettled([loadOverview(), loadAccountRequests()]);
-  }, [loadAccountRequests, loadOverview]);
+    void Promise.allSettled([loadOverview()]);
+  }, [loadOverview]);
 
   const logoutUser = useCallback(() => {
     logout();
     notifyInfo("Signed out", "You have been logged out.");
   }, [logout, notifyInfo]);
 
-  const getPendingRequestForCustomer = useCallback(
-    (userId) => pendingRequestByCustomerId.get(userId) || null,
-    [pendingRequestByCustomerId]
-  );
-
-  const hasPendingAccountRequest = useCallback(
-    (userId) => pendingRequestByCustomerId.has(userId),
-    [pendingRequestByCustomerId]
-  );
 
   const isKycPending = useCallback(
     (customer) => String(customer?.kycStatus || "").toUpperCase() === "PENDING",
@@ -302,7 +271,6 @@ export function useAdminWorkspace() {
         const updated = await adminService.updateKyc(accessToken, userId, kycStatus);
         await Promise.all([
           loadOverview(),
-          loadAccountRequests(),
           loadCustomers(customerQueryRef.current),
           selectedCustomerId === userId
             ? loadCustomerDetail(userId, { preserveExisting: true })
@@ -319,7 +287,6 @@ export function useAdminWorkspace() {
       finishAction,
       getValidAccessToken,
       handleSessionError,
-      loadAccountRequests,
       loadCustomerDetail,
       loadCustomers,
       loadOverview,
@@ -329,50 +296,56 @@ export function useAdminWorkspace() {
     ]
   );
 
-  const approveAccountRequest = useCallback(
-    async (requestId) => {
-      startAction("approveAccountRequest");
+
+  const loadPendingTransfers = useCallback(
+    async ({ signal } = {}) => {
+      startAction("pendingTransfers");
+      setPendingTransfersError("");
       try {
         const accessToken = await getValidAccessToken();
-        const approved = await adminService.approveAccountRequest(accessToken, requestId);
-        await Promise.all([
-          loadOverview(),
-          loadAccountRequests(),
-          loadCustomers(customerQueryRef.current),
-          selectedCustomerId
-            ? loadCustomerDetail(selectedCustomerId, { preserveExisting: true })
-            : Promise.resolve()
-        ]);
-        notifySuccess(
-          "Account approved",
-          `Account ${approved.approvedAccountNumber} opened for ${approved.requesterUsername}.`
-        );
+        const data = await adminService.getPendingTransfers(accessToken, { page: 0, size: 50, signal });
+        if (signal?.aborted) return;
+        setPendingTransfers(Array.isArray(data?.content) ? data.content : []);
+        setPendingTransfersLoaded(true);
       } catch (error) {
-        handleSessionError(error, "Account approval failed");
+        if (!handleSessionError(error, "Unable to load pending transfers")) {
+          setPendingTransfersError(error.message || "Unable to load pending transfers.");
+        }
       } finally {
-        finishAction("approveAccountRequest");
+        finishAction("pendingTransfers");
       }
     },
-    [
-      finishAction,
-      getValidAccessToken,
-      handleSessionError,
-      loadAccountRequests,
-      loadCustomerDetail,
-      loadCustomers,
-      loadOverview,
-      notifySuccess,
-      selectedCustomerId,
-      startAction
-    ]
+    [finishAction, getValidAccessToken, handleSessionError, startAction]
+  );
+
+  const approveTransfer = useCallback(
+    async (transferId) => {
+      startAction("approveTransfer");
+      try {
+        const accessToken = await getValidAccessToken();
+        const receipt = await adminService.approveTransfer(accessToken, transferId);
+        await Promise.all([
+          loadOverview(),
+          loadPendingTransfers()
+        ]);
+        notifySuccess("Transfer approved", `Transfer ${receipt?.transferId || transferId} was approved and posted.`);
+      } catch (error) {
+        handleSessionError(error, "Transfer approval failed");
+      } finally {
+        finishAction("approveTransfer");
+      }
+    },
+    [finishAction, getValidAccessToken, handleSessionError, loadOverview, loadPendingTransfers, notifySuccess, startAction]
   );
 
   return {
     user,
     overview,
     customers,
-    accountRequests,
-    pendingRequestByCustomerId,
+    pendingTransfers,
+    pendingTransfersLoaded,
+    pendingTransfersError,
+
     customerPage,
     customerPageSize,
     customerTotalPages,
@@ -385,21 +358,21 @@ export function useAdminWorkspace() {
     selectedCustomerError,
     overviewError,
     customersError,
-    requestsError,
+
     overviewLoaded,
     customersLoaded,
-    requestsLoaded,
+
     tracker,
     logoutUser,
     loadOverview,
     loadCustomers,
-    loadAccountRequests,
+    loadPendingTransfers,
+    approveTransfer,
+
     loadCustomerDetail,
     refreshCustomerList,
     updateKyc,
-    approveAccountRequest,
-    getPendingRequestForCustomer,
-    hasPendingAccountRequest,
+
     isKycPending,
     isKycFinal,
     setCustomerPage: changeCustomerPage,
@@ -410,3 +383,4 @@ export function useAdminWorkspace() {
     closeCustomerDetail
   };
 }
+

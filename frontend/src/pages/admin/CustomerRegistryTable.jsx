@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo } from "react";
 import {
   Check,
   ChevronDown,
@@ -9,17 +9,14 @@ import {
   MapPin,
   Phone,
   Search,
-  ShieldCheck,
   User,
   X
 } from "lucide-react";
-
 import { formatAddress, formatDate } from "../../utils/formatters";
-import { EmptyState } from "../feedback/EmptyState";
-import { LoadingState } from "../feedback/LoadingState";
-import { SectionErrorState } from "../feedback/SectionErrorState";
-import { FormField } from "../forms/FormField";
-import { StatusBadge } from "../ui/StatusBadge";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { LoadingState } from "../../components/feedback/LoadingState";
+import { SectionErrorState } from "../../components/feedback/SectionErrorState";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 
 const PAGE_SIZE_OPTIONS = [
   { value: "10", label: "10 / page" },
@@ -55,8 +52,6 @@ const CustomerDetailModal = memo(function CustomerDetailModal({
         aria-label="Close detail view"
         onClick={onClose}
       />
-
-
 
       {/* Centered Modal Card */}
       <div className="relative z-10 w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col max-h-[90vh] text-slate-900 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
@@ -221,7 +216,7 @@ const CustomerDetailModal = memo(function CustomerDetailModal({
   );
 });
 
-export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
+export const CustomerRegistryTable = memo(function CustomerRegistryTable({
   title = "Customer Directory",
   subtitle = "Manage institution-wide identity verification and customer profiles.",
   emptyTitle = "No customer profiles found",
@@ -310,7 +305,6 @@ export const CustomerRegistryPanel = memo(function CustomerRegistryPanel({
                 />
               </div>
             ) : null}
-
 
             <button
               type="button"

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { CustomerRegistryPanel } from "../../components/admin/CustomerRegistryPanel";
+import { CustomerRegistryTable } from "./CustomerRegistryTable";
 import { useAdminRouteWorkspace } from "../../hooks/useAdminRouteWorkspace";
 
 export default function CustomerRegistryPage() {
@@ -14,7 +14,7 @@ export default function CustomerRegistryPage() {
 
   return (
     <section className="w-full min-w-0">
-      <CustomerRegistryPanel
+      <CustomerRegistryTable
 
         title="Institution Customer Directory"
         subtitle="Search the bank-wide customer base, inspect individual KYC verification status, and view registered details."

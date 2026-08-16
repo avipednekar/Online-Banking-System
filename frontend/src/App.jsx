@@ -14,7 +14,16 @@ import { useAuth } from "./context/AuthContext";
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
-const CustomerPage = lazy(() => import("./pages/CustomerPage"));
+
+/* Customer Pages */
+const CustomerLayout = lazy(() => import("./layouts/CustomerLayout"));
+const CustomerOverviewPage = lazy(() => import("./pages/customer/CustomerOverviewPage"));
+const AccountsPage = lazy(() => import("./pages/customer/AccountsPage"));
+const TransfersPage = lazy(() => import("./pages/customer/TransfersPage"));
+const TransactionsPage = lazy(() => import("./pages/customer/TransactionsPage"));
+const ProfilePage = lazy(() => import("./pages/customer/ProfilePage"));
+
+/* Admin Pages */
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const DashboardPage = lazy(() => import("./pages/admin/DashboardPage"));
 const CustomerRegistryPage = lazy(() => import("./pages/admin/CustomerRegistryPage"));
@@ -51,7 +60,13 @@ export default function App() {
             </Route>
 
             <Route element={<CustomerProtectedRoute />}>
-              <Route path="/dashboard" element={<CustomerPage />} />
+              <Route path="/dashboard" element={<CustomerLayout />}>
+                <Route index element={<CustomerOverviewPage />} />
+                <Route path="accounts" element={<AccountsPage />} />
+                <Route path="transfers" element={<TransfersPage />} />
+                <Route path="transactions" element={<TransactionsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
             </Route>
 
             <Route element={<AdminProtectedRoute />}>
@@ -64,7 +79,6 @@ export default function App() {
               </Route>
             </Route>
 
-
             <Route path="*" element={<RoleAwareRedirect />} />
           </Routes>
         </Suspense>
@@ -72,3 +86,4 @@ export default function App() {
     </AppShell>
   );
 }
+

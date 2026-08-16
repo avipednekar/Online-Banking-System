@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Clock, ShieldX, Users } from "lucide-react";
-import { CustomerRegistryPanel } from "../../components/admin/CustomerRegistryPanel";
+import { CustomerRegistryTable } from "./CustomerRegistryTable";
 import { useAdminRouteWorkspace } from "../../hooks/useAdminRouteWorkspace";
 
 const TABS = [
@@ -51,9 +51,9 @@ export default function KycManagementPage() {
             <button
               key={tab.id}
               type="button"
-              className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 isActive
-                  ? "bg-indigo-600 text-white shadow-xs font-bold"
+                  ? "bg-slate-900 text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
               onClick={() => handleTabChange(tab.id)}
@@ -62,8 +62,10 @@ export default function KycManagementPage() {
               <span>{tab.label}</span>
               {count !== null ? (
                 <span
-                  className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                    isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-700"
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    isActive
+                      ? "bg-slate-800 text-white"
+                      : "bg-slate-100 text-slate-700 border border-slate-200"
                   }`}
                 >
                   {count}
@@ -74,7 +76,7 @@ export default function KycManagementPage() {
         })}
       </div>
 
-      <CustomerRegistryPanel
+      <CustomerRegistryTable
         title="KYC Verification Desk"
         subtitle={
           activeTab === "PENDING"
